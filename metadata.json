@@ -1,0 +1,7 @@
+{
+  "name": "Audio Physics",
+  "description": "A tactile, interactive exploration of 9 mathematical shape simulations reacting to cursor movement in a monochrome aesthetic.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
