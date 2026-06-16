@@ -274,7 +274,7 @@ export const useGenerativeAudio = () => {
     syncLoop();
 
     // Load Default Patch immediately
-    loadPatch(DEFAULT_PATCH);
+    loadPatch(DEFAULT_PATCH, false); // Don't auto-play default
 
     // Load Saved Patches from LocalStorage
     try {
@@ -288,6 +288,42 @@ export const useGenerativeAudio = () => {
         synthRef.current?.stop();
     };
   }, []);
+
+  const mapToHumanReadableError = (e: any): string => {
+      const msg = (e?.message || String(e) || '').trim();
+      const lower = msg.toLowerCase();
+
+      if (lower.includes("api key") || lower.includes("api_key") || lower.includes("key_invalid") || lower.includes("credential") || lower.includes("unauthorized") || lower.includes("forbidden") || lower.includes("403")) {
+          return "The Gemini API key is missing or invalid. Please check your project environment settings.";
+      }
+      if (lower.includes("fetch failed") || lower.includes("network") || lower.includes("offline") || lower.includes("dns") || lower.includes("connect")) {
+          return "Network connection issue. Please make sure you are online and that the API is reachable.";
+      }
+      if (lower.includes("quota") || lower.includes("resource_exhausted") || lower.includes("exhausted") || lower.includes("rate limit") || lower.includes("429")) {
+          return "Gemini API request limit exceeded (Quota exhausted). Please wait a few moments and try again.";
+      }
+      if (lower.includes("safety") || lower.includes("blocked") || lower.includes("harm") || lower.includes("violat") || lower.includes("finishreason")) {
+          return "This request was declined by Gemini's safety standards. Please rephrase your audio prompt.";
+      }
+      if (lower.includes("syntaxerror") || lower.includes("json") || lower.includes("parse")) {
+          return "The generative model returned an incorrect patch structure. Click 'Generate' again to rebuild it.";
+      }
+      if (lower.includes("model") && (lower.includes("not found") || lower.includes("404"))) {
+          return "Synthesizer model is currently unavailable on the server. Please try again in higher traffic moments later.";
+      }
+
+      // Clean up generic headers if any
+      let cleaned = msg;
+      cleaned = cleaned.replace(/^Error:\s*/i, '');
+      cleaned = cleaned.replace(/^GoogleGenAIError:\s*/i, '');
+      cleaned = cleaned.replace(/^\[GoogleGenAI Error\]:\s*/i, '');
+      
+      if (cleaned.length > 180) {
+          cleaned = cleaned.substring(0, 177) + "...";
+      }
+
+      return cleaned || "An unexpected error occurred during sound generation. Please try again.";
+  };
 
   const sanitizePatch = (patch: any): SynthPatch => {
       // Ensure numerical safety and required structure
@@ -335,81 +371,43 @@ export const useGenerativeAudio = () => {
   };
 
   const generatePatch = async (prompt: string, imageBase64?: string) => {
-    if (!genAIRef.current) {
-        setError("API Key missing or SDK not initialized");
-        return;
-    }
-    
     setIsGenerating(true);
     setError(null);
 
     try {
-        let finalPrompt = prompt;
-        const structureHint = loopLength >= 64 
-            ? ` Create a long, evolving structure (${loopLength} steps). Use A/B sections.` 
-            : ` Create a concise ${loopLength}-step loop.`;
-        
-        finalPrompt += structureHint;
-        finalPrompt += ` Ensure the 'totalSteps' property is set to ${loopLength}.`;
-        
-        // Contextual Refinement Logic
-        let promptContent: any[] = [];
-        
-        if (imageBase64) {
-            // Multimodal: Image + Text
-            const mimeType = imageBase64.substring(imageBase64.indexOf(':') + 1, imageBase64.indexOf(';'));
-            const base64Data = imageBase64.split(',')[1];
-            
-            promptContent = [
-                { text: `Analyze this image. Translate its visual mood, texture, and composition into a SynthPatch. ${finalPrompt}` },
-                { inlineData: { mimeType, data: base64Data } }
-            ];
-        } else {
-            // Text Only or Refinement
-            if (currentPatch && !prompt.toLowerCase().includes("scratch")) {
-                promptContent = [{
-                    text: `Current Patch State: ${JSON.stringify(currentPatch)}. 
-                    User Request: "${finalPrompt}". 
-                    Modify the current patch state to match the request. Keep what works, change what needs changing.`
-                }];
-            } else {
-                promptContent = [{ text: finalPrompt }];
-            }
-        }
-
-        const result = await genAIRef.current.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: {
-                parts: promptContent
+        const response = await fetch("/api/generate", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
             },
-            config: {
-                systemInstruction: SYSTEM_INSTRUCTION,
-                responseMimeType: 'application/json',
-                responseSchema: responseSchema,
-                temperature: 1.5, // High creativity
-                topP: 0.95, // Wide vocabulary
-                thinkingConfig: { thinkingBudget: 4096 } // Allow planning
-            }
+            body: JSON.stringify({
+                prompt,
+                loopLength,
+                imageBase64,
+                currentPatch
+            })
         });
 
-        const jsonText = result.text;
-        if (!jsonText) throw new Error("No text returned from Gemini");
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.error || `Server responded with status ${response.status}`);
+        }
 
-        const rawPatch = JSON.parse(jsonText);
+        const rawPatch = await response.json();
         const patch = sanitizePatch(rawPatch);
         
-        loadPatch(patch);
+        loadPatch(patch, false);
         // Do NOT auto-play. Let user click play.
         
     } catch (e: any) {
         console.error("Generation failed", e);
-        setError(e.message || "Failed to generate audio");
+        setError(mapToHumanReadableError(e));
     } finally {
         setIsGenerating(false);
     }
   };
 
-  const loadPatch = useCallback(async (patch: SynthPatch) => {
+  const loadPatch = useCallback(async (patch: SynthPatch, playOnLoad: boolean = true) => {
       setCurrentPatch(patch);
       // Sync mixer controls to new patch defaults
       setBpm(patch.bpm);
@@ -417,17 +415,13 @@ export const useGenerativeAudio = () => {
       if (synthRef.current) {
           synthRef.current.loadPatch(patch);
           
-          // Auto-start only if loading from library/presets (explicit user action)
-          // But for generation, we might want to wait? 
-          // Current requirement: "Autoplay starter and saved patches when I click them"
-          // We can infer this logic: if isGenerating is false, it's a library load.
-          if (!isGenerating) {
+          if (playOnLoad) {
              await synthRef.current.resume();
              synthRef.current.start();
              setIsPlaying(true);
           }
       }
-  }, [isGenerating]);
+  }, []);
 
   const togglePlay = async () => {
     if (!synthRef.current) return;
@@ -499,6 +493,7 @@ export const useGenerativeAudio = () => {
     isGenerating,
     currentPatch,
     error,
+    setError,
     // Mixer
     bpm, updateBpm,
     volume, updateVolume,

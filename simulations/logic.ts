@@ -159,6 +159,7 @@ const drawHoloSphere = ({ ctx, width, height, time, mouse, audio }: SimulationCo
       const harmonic = Math.sin(lat * mode) * Math.cos(long * mode);
       
       let angleNorm = long / (Math.PI * 2);
+      // Triangle mapping for seamless wrap
       if (angleNorm > 0.5) angleNorm = 1.0 - angleNorm;
       angleNorm *= 2.0; 
       
@@ -297,12 +298,19 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
       let y = basePath;
       
       const waveIndex = Math.floor(map(x, 0, width, 0, audio.waveform.length));
+      // Raw signal drives the wave
       const waveAmp = (audio.waveform[waveIndex] / 128.0) - 1.0; 
       const depthDecay = map(i, 0, lines, 0.2, 2.0);
-      const noiseDetail = noise(x * 0.01, i * 0.1, time) * audio.centroid * 50;
+      
+      // Removed Perlin noise. 
+      // Replaced with Treble-driven harmonic detail
+      // Using sin/cos of the harmonic series to create texture
+      const detailFreq = 0.2 + (audio.treble * 2.0);
+      const detailAmp = audio.treble * 20;
+      const detail = Math.sin(x * detailFreq + time * 5) * Math.cos(x * 0.05) * detailAmp;
       
       y += waveAmp * 80 * depthDecay * audio.volume;
-      y += noiseDetail;
+      y += detail;
 
       const d = dist(x, y, mouse.x, mouse.y);
       const pull = Math.exp(-d * 0.01) * 60;
@@ -316,7 +324,7 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay(ctx, width, height, "y = A * Wave(t) + Noise(x)", {
+  drawEquationOverlay(ctx, width, height, "y = A * Wave(t) + N(x)", {
       A: audio.volume,
       t: time
   });
@@ -384,13 +392,18 @@ const drawFluidArrays = ({ ctx, width, height, time, mouse, audio }: SimulationC
       if (active) {
           p.vx += fx * energy * 2;
           p.vy += fy * energy * 2;
-          p.vx += (Math.random() - 0.5) * energy;
-          p.vy += (Math.random() - 0.5) * energy;
+          // Brownian motion derived from treble instead of pure random
+          // Use waveform phase to jitter
+          const jitter = (audio.waveform[Math.floor(p.x) % 128] / 128 - 1.0) * audio.treble * 2;
+          p.vx += jitter;
+          p.vy += jitter;
       }
       
       if (audio.flux > 0.3) {
-          p.vx += (Math.random() - 0.5) * 10;
-          p.vy += (Math.random() - 0.5) * 10;
+          // Scatter based on transient strength
+          const scatter = audio.flux * 10;
+          p.vx += (Math.random() - 0.5) * scatter;
+          p.vy += (Math.random() - 0.5) * scatter;
       }
 
       const d = dist(p.x, p.y, mouse.x, mouse.y);
@@ -491,18 +504,25 @@ const drawParticles = ({ ctx, width, height, time, mouse, audio }: SimulationCon
     let x = cx + Amp * Math.sin(f1 * (time + phase) + phase);
     let y = cy + Amp * Math.sin(f2 * (time + phase));
     
-    if (audio.flux > 0.2) {
-        const expl = audio.flux * 100;
-        x += (Math.random() - 0.5) * expl;
-        y += (Math.random() - 0.5) * expl;
-    }
+    // Removed random explosion.
+    // Replaced with Waveform-driven displacement
+    // Use the actual waveform value at this particle's index
+    const waveIdx = Math.floor(map(i, 0, count, 0, audio.waveform.length));
+    const waveVal = (audio.waveform[waveIdx] / 128.0 - 1.0); // -1 to 1
+    
+    // Scatter outward based on the wave amplitude at that moment
+    const displacement = waveVal * audio.flux * 300;
+    
+    const ang = Math.atan2(y - cy, x - cx);
+    x += Math.cos(ang) * displacement;
+    y += Math.sin(ang) * displacement;
 
     const d = dist(x, y, mouse.x, mouse.y);
     if (d < 100) {
       const force = (100 - d) / 100;
-      const ang = Math.atan2(y - mouse.y, x - mouse.x);
-      x += Math.cos(ang) * force * 50;
-      y += Math.sin(ang) * force * 50;
+      const angM = Math.atan2(y - mouse.y, x - mouse.x);
+      x += Math.cos(angM) * force * 50;
+      y += Math.sin(angM) * force * 50;
     }
 
     const size = 1.5 + audio.mid * 3;
@@ -572,33 +592,55 @@ const drawHex = ({ ctx, width, height, time, mouse, audio }: SimulationContext) 
   });
 };
 
-/* --- 9. Static (Bitcrusher) --- */
-const drawNoiseField = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
-  const baseStep = 8;
-  const resolution = baseStep + (1 - audio.centroid) * 20; 
+/* --- 9. Static -> Phase (Phase Portrait) --- */
+const drawPhaseSpace = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+  const cx = width / 2;
+  const cy = height / 2;
   
-  ctx.fillStyle = COLOR_STROKE;
-  const thresholdBase = 0.7;
-  const threshold = thresholdBase - (audio.volume * 0.3) - (audio.flux * 0.3);
-
-  for (let x = 0; x < width; x += resolution) {
-    for (let y = 0; y < height; y += resolution) {
-      const n = noise(x * 0.005, y * 0.005, time * (0.1 + audio.treble));
-      const d = dist(x, y, mouse.x, mouse.y);
-      const influence = Math.max(0, 150 - d) / 150;
+  // Phase Plot: x(t) vs x(t-k)
+  // This visualizes the system's "Attractor"
+  const scale = Math.min(width, height) * 0.4;
+  
+  ctx.strokeStyle = COLOR_STROKE;
+  ctx.lineJoin = 'round';
+  
+  // Delay amount (embedding dimension lag)
+  // Higher pitch (centroid) -> smaller delay needed to see structure
+  const delay = Math.max(1, Math.floor(5 - audio.centroid * 4)); 
+  
+  ctx.beginPath();
+  
+  const len = audio.waveform.length;
+  // Dynamic line width based on energy
+  ctx.lineWidth = 0.5 + audio.volume * 2;
+  
+  for(let i=0; i < len - delay; i++) {
+      // Map 0-255 to -1 to 1
+      const xVal = (audio.waveform[i] / 128.0) - 1.0;
+      const yVal = (audio.waveform[i + delay] / 128.0) - 1.0;
       
-      if (n > threshold || influence > 0.1) {
-         const waveIdx = Math.floor(map(x, 0, width, 0, audio.waveform.length));
-         const waveVal = Math.abs(audio.waveform[waveIdx] / 128 - 1);
-         const size = (n * resolution * 0.5) + (influence * 4) + (waveVal * resolution);
-         ctx.fillRect(x, y, size, size);
+      let px = cx + xVal * scale;
+      let py = cy + yVal * scale;
+      
+      // Mouse interaction: Perturb the attractor
+      const d = dist(px, py, mouse.x, mouse.y);
+      if (d < 100) {
+          const push = (100 - d) / 100;
+          const ang = Math.atan2(py - mouse.y, px - mouse.x);
+          px += Math.cos(ang) * push * 30;
+          py += Math.sin(ang) * push * 30;
       }
-    }
-  }
 
-  drawEquationOverlay(ctx, width, height, "Res ∝ 1 / f_c", {
-      Res: Math.round(resolution),
-      f_c: audio.centroid
+      if (i===0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+  }
+  
+  // Close the loop visually if it's a periodic signal
+  ctx.stroke();
+
+  drawEquationOverlay(ctx, width, height, "x[n] vs x[n-k]", {
+      k: delay,
+      RMS: audio.volume
   });
 };
 
@@ -699,11 +741,16 @@ const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext
             fluid.velX[i] += (avgX - fluid.velX[i]) * 0.2;
             fluid.velY[i] += (avgY - fluid.velY[i]) * 0.2;
         }
-        const noiseFreq = 0.05 + audio.centroid * 0.2;
-        const noiseVal = noise(x * noiseFreq, y * noiseFreq, time * 0.5);
-        const turb = audio.treble * 5; 
-        fluid.velX[i] += Math.cos(noiseVal * Math.PI * 2) * turb;
-        fluid.velY[i] += Math.sin(noiseVal * Math.PI * 2) * turb;
+        
+        // Removed Perlin Noise
+        // Use Audio Centroid to create turbulence patterns
+        const turbScale = 0.05 + audio.centroid * 0.2;
+        const turbForce = audio.treble * 5;
+        // Simple procedural turbulence based on position and time
+        const flow = Math.sin(x * turbScale + time) + Math.cos(y * turbScale + time);
+        
+        fluid.velX[i] += Math.cos(flow * Math.PI) * turbForce;
+        fluid.velY[i] += Math.sin(flow * Math.PI) * turbForce;
     }
 
     ctx.fillStyle = COLOR_STROKE;
@@ -739,6 +786,254 @@ const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext
     });
 };
 
+/* --- 11. Vector (Polar FFT) --- */
+const drawPolarSpectrum = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = Math.min(width, height) * 0.35;
+    
+    ctx.strokeStyle = COLOR_STROKE;
+    ctx.lineWidth = 1.5;
+    
+    // Polar Transformation: (Freq Magnitude, Freq Bin) -> (r, theta)
+    // r = BaseRadius + Magnitude[f]
+    // theta = f * 2PI
+    
+    ctx.beginPath();
+    const len = audio.fft.length;
+    // We mirror the spectrum to close the loop smoothly
+    
+    for (let i = 0; i <= len * 2; i++) {
+        // Wrap index around 0-len-0 (Triangle wave indexing)
+        let idx = i % (len * 2);
+        if (idx >= len) idx = (len * 2) - idx - 1;
+        
+        const angle = map(i, 0, len * 2, 0, Math.PI * 2);
+        const mag = audio.fft[idx] / 255.0; // 0 to 1
+        
+        // Apply Flux to expand the ring
+        const r = radius + (mag * 100 * audio.volume) + (audio.flux * 20);
+        
+        const x = cx + Math.cos(angle + time * 0.5) * r;
+        const y = cy + Math.sin(angle + time * 0.5) * r;
+        
+        // Mouse warp
+        const d = dist(x, y, mouse.x, mouse.y);
+        let mx = x, my = y;
+        if (d < 100) {
+            const pull = (100 - d) / 100;
+            mx += (mouse.x - x) * pull;
+            my += (mouse.y - y) * pull;
+        }
+
+        if (i === 0) ctx.moveTo(mx, my);
+        else ctx.lineTo(mx, my);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    
+    // Draw Center "Singularity" driven by Bass
+    const core = audio.bass * 20;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, core, 0, Math.PI*2);
+    ctx.fill();
+
+    drawEquationOverlay(ctx, width, height, "r = R + |X(f)|", {
+        f: "0-20kHz",
+        R: radius.toFixed(0)
+    });
+};
+
+/* --- 12. Lattice (Tonnetz/Harmonic Grid) --- */
+const getChroma = (fft: Uint8Array): number[] => {
+    // Map FFT bins to 12 pitch classes
+    const chroma = new Array(12).fill(0);
+    // Rough mapping: start at bin 5 (~86Hz) up to bin 60 (~1000Hz)
+    // f = i * 44100 / 256
+    for (let i = 2; i < 64; i++) {
+        const freq = i * 44100 / 256;
+        if (freq < 50) continue;
+        // MIDI note number: 69 + 12 * log2(f/440)
+        const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+        const pitchClass = midi % 12;
+        if (pitchClass >= 0) {
+            chroma[pitchClass] += fft[i] / 255;
+        }
+    }
+    return chroma;
+};
+
+const drawTonnetz = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+    // Euler's Tonnetz: Triangular grid
+    // Axis 1: Perfect 5ths (7 semitones)
+    // Axis 2: Major 3rds (4 semitones)
+    
+    const chroma = getChroma(audio.fft);
+    // Normalize chroma
+    const maxVal = Math.max(...chroma, 0.001);
+    const normalizedChroma = chroma.map(v => v / maxVal);
+    
+    const size = 40;
+    const cx = width / 2;
+    const cy = height / 2;
+    
+    const gridW = 5;
+    const gridH = 5;
+    
+    // Notes on the grid (Centered at C=0)
+    // We generate a grid of notes (x,y) -> Note Index
+    // Note = (x * 7 + y * 4) % 12
+    
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '10px "Space Grotesk"';
+    
+    const drawNode = (i: number, j: number) => {
+        // Hexagonal coordinates
+        const x = (i + j * 0.5) * size;
+        const y = j * size * 0.866;
+        
+        const screenX = cx + (x - (gridW * size)/2);
+        const screenY = cy + (y - (gridH * size * 0.866)/2);
+        
+        // Calculate Pitch Class
+        let noteIdx = ((i * 7) + (j * 4)) % 12;
+        if (noteIdx < 0) noteIdx += 12;
+        
+        const intensity = normalizedChroma[noteIdx];
+        
+        // Draw connection lines
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Right
+        ctx.moveTo(screenX, screenY);
+        ctx.lineTo(screenX + size, screenY);
+        // Down-Right
+        ctx.moveTo(screenX, screenY);
+        ctx.lineTo(screenX + size * 0.5, screenY + size * 0.866);
+        // Up-Right
+        ctx.moveTo(screenX, screenY);
+        ctx.lineTo(screenX + size * 0.5, screenY - size * 0.866);
+        ctx.stroke();
+
+        // Draw Node
+        const radius = 2 + intensity * 15 * audio.volume;
+        
+        // Mouse Interaction
+        const d = dist(screenX, screenY, mouse.x, mouse.y);
+        const hover = d < 40 ? (40-d)/40 : 0;
+        
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.2 + intensity + hover})`;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius + hover * 5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Note Label (Optional, maybe clutter)
+        /*
+        if (intensity > 0.5 || hover > 0.5) {
+             const names = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+             ctx.fillStyle = '#000';
+             ctx.fillText(names[noteIdx], screenX, screenY);
+        }
+        */
+    };
+    
+    for(let j = -gridH; j <= gridH; j++) {
+        for(let i = -gridW; i <= gridW; i++) {
+            drawNode(i, j);
+        }
+    }
+
+    drawEquationOverlay(ctx, width, height, "Note = (i*7 + j*4) % 12", {
+        Consonance: audio.centroid.toFixed(2),
+        Root: "C" // Simplified
+    });
+};
+
+/* --- 13. Attractor (Lorenz System / Chaos) --- */
+interface AttractorState {
+    x: number;
+    y: number;
+    z: number;
+    points: Point3D[];
+}
+const attractorState: AttractorState = {
+    x: 0.1, y: 0, z: 0,
+    points: []
+};
+
+const drawLorenz = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+    // Lorenz Constants
+    // sigma = 10, beta = 8/3, rho = 28 (Standard Chaos)
+    // We modulate rho (Rayleigh number) with Bass to push it into higher energy states
+    const sigma = 10;
+    const beta = 8/3;
+    const rho = 28 + (audio.bass * 20); 
+    
+    const dt = 0.01 + (audio.treble * 0.01); // Speed driven by treble
+    
+    // Integration step (Euler)
+    const dx = sigma * (attractorState.y - attractorState.x) * dt;
+    const dy = (attractorState.x * (rho - attractorState.z) - attractorState.y) * dt;
+    const dz = (attractorState.x * attractorState.y - beta * attractorState.z) * dt;
+    
+    attractorState.x += dx;
+    attractorState.y += dy;
+    attractorState.z += dz;
+    
+    attractorState.points.push({ x: attractorState.x, y: attractorState.y, z: attractorState.z });
+    if (attractorState.points.length > 500) attractorState.points.shift();
+    
+    // Projection
+    ctx.strokeStyle = COLOR_STROKE;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    
+    // Rotate the entire cloud
+    const rX = time * 0.2;
+    const rY = time * 0.3;
+    
+    for (let i = 0; i < attractorState.points.length; i++) {
+        const p = attractorState.points[i];
+        
+        // Scale and Center
+        // Lorenz z is usually 0-50, x/y are -20 to 20
+        let centeredX = p.x * 5;
+        let centeredY = (p.y) * 5;
+        let centeredZ = (p.z - 25) * 5;
+        
+        // 3D Rotation
+        let pt: Point3D = {x: centeredX, y: centeredY, z: centeredZ};
+        pt = rotateY(pt, rY);
+        pt = rotateX(pt, rX);
+        
+        // Project
+        const proj = project(pt.x, pt.y, pt.z, width, height, 500);
+        
+        // Interaction
+        let sx = proj.x;
+        let sy = proj.y;
+        const d = dist(sx, sy, mouse.x, mouse.y);
+        if (d < 100) {
+            const pull = (100-d)/100;
+            sx += (mouse.x - sx) * pull * 0.2;
+            sy += (mouse.y - sy) * pull * 0.2;
+        }
+        
+        if (i === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+
+    drawEquationOverlay(ctx, width, height, "dx = σ(y-x)dt", {
+        ρ: rho.toFixed(1),
+        σ: sigma
+    });
+};
+
+
 export const simulations: SimulationDef[] = [
   { id: 1, title: "Ridge", description: "3D Spectrogram", draw: drawRidges },
   { id: 2, title: "Holo", description: "Voice Coil", draw: drawHoloSphere },
@@ -748,6 +1043,9 @@ export const simulations: SimulationDef[] = [
   { id: 6, title: "Twist", description: "Standing Wave", draw: drawTwist },
   { id: 7, title: "Swarm", description: "Harmonograph", draw: drawParticles },
   { id: 8, title: "Hive", description: "Phononic Lattice", draw: drawHex },
-  { id: 9, title: "Static", description: "Nyquist Sampling", draw: drawNoiseField },
+  { id: 9, title: "Phase", description: "Attractor", draw: drawPhaseSpace },
   { id: 10, title: "Fluid", description: "Sonic Wind", draw: drawFluid },
+  { id: 11, title: "Vector", description: "Polar Spectrum", draw: drawPolarSpectrum },
+  { id: 12, title: "Lattice", description: "Euler Tonnetz", draw: drawTonnetz },
+  { id: 13, title: "Chaos", description: "Lorenz System", draw: drawLorenz },
 ];

@@ -25,10 +25,10 @@ export const Tile: React.FC<TileProps> = ({ sim, audioDataRef, shouldTimeAdvance
       />
       
       {/* Info Overlay (Replaces ID, Top Left) */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300 mix-blend-difference">
+      <div className="absolute top-4 left-4 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
          <div className="text-left">
-             <p className="font-display text-xl font-bold text-white tracking-tight">{sim.title}</p>
-             <p className="text-[10px] text-zinc-300 uppercase tracking-widest mt-1">{sim.description}</p>
+             <p className="font-display text-xl font-bold text-white tracking-tight drop-shadow-md">{sim.title}</p>
+             <p className="text-[10px] text-zinc-300 uppercase tracking-widest mt-0.5 drop-shadow-md">{sim.description}</p>
          </div>
       </div>
     </div>

@@ -1,13 +1,16 @@
-
 import React, { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Tile } from './components/Tile';
 import { simulations } from './simulations/logic';
 import { useGenerativeAudio } from './hooks/useGenerativeAudio';
 import { useAudioAnalyzer } from './hooks/useAudioAnalyzer';
+import { useDynamicFavicon } from './hooks/useDynamicFavicon';
 import { ControlBar } from './components/ControlBar';
 
 export default function App() {
   const [audioSource, setAudioSource] = useState<'synth' | 'mic'>('synth');
+  // Allow multiple expanded tiles, default to Swarm (ID 7) expanded
+  const [expandedIds, setExpandedIds] = useState<number[]>([7]);
 
   // AI Synth Hook
   const { 
@@ -20,6 +23,7 @@ export default function App() {
       isGenerating, 
       currentPatch, 
       error,
+      setError,
       // Mixer Controls
       bpm, updateBpm,
       volume, updateVolume,
@@ -38,11 +42,33 @@ export default function App() {
   } = useAudioAnalyzer();
 
   const activeAudioRef = audioSource === 'synth' ? synthAudioDataRef : micAudioDataRef;
+  useDynamicFavicon(activeAudioRef);
   
   // Physics Time Logic: 
   // If Synth: Only advance time when playing.
   // If Mic: Always advance time (world is always moving).
   const shouldTimeAdvance = audioSource === 'mic' || isPlaying;
+
+  const handleTileClick = (id: number) => {
+      const updateState = () => {
+        setExpandedIds(prev => 
+            prev.includes(id) 
+                ? prev.filter(pid => pid !== id) 
+                : [...prev, id]
+        );
+      };
+
+      // Use View Transitions API if available for smooth layout morphing
+      if ((document as any).startViewTransition) {
+          (document as any).startViewTransition(() => {
+              flushSync(() => {
+                  updateState();
+              });
+          });
+      } else {
+          updateState();
+      }
+  };
 
   return (
     <main className="min-h-screen w-full bg-[#09090b] text-white p-4 md:p-8 lg:p-12 flex flex-col items-center justify-center">
@@ -94,9 +120,9 @@ export default function App() {
                </button>
            )}
            
-           <div className="hidden sm:block text-right border-l border-zinc-800 pl-4 h-full">
-              <p className="text-xs text-zinc-600 uppercase tracking-widest leading-none">Audio</p>
-              <p className="text-xs text-zinc-600 uppercase tracking-widest leading-none mt-1">Physics</p>
+           <div className="hidden">
+
+
            </div>
         </div>
       </header>
@@ -111,10 +137,12 @@ export default function App() {
                   isGenerating={isGenerating}
                   currentPatch={currentPatch}
                   error={error}
+                  onClearError={() => setError(null)}
                   bpm={bpm} updateBpm={updateBpm}
                   volume={volume} updateVolume={updateVolume}
                   filterFreq={filterFreq} updateFilter={updateFilter}
                   onSave={saveCurrentPatch}
+                  onUpdatePatch={loadPatch}
                   loopLength={loopLength}
                   setLoopLength={setLoopLength}
               />
@@ -144,17 +172,31 @@ export default function App() {
       </div>
 
       {/* Grid */}
-      <div className="w-full max-w-[1600px] grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-1 bg-zinc-800 border border-zinc-800">
-        {simulations.map((sim) => (
-          <div key={sim.id}>
-            <Tile 
-                sim={sim} 
-                audioDataRef={activeAudioRef} 
-                shouldTimeAdvance={shouldTimeAdvance}
-                resetTrigger={currentPatch} // Resets physics time when patch changes
-            />
-          </div>
-        ))}
+      <div className="w-full max-w-[1600px] grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-1 bg-zinc-800 border border-zinc-800 auto-rows-fr grid-flow-dense">
+        {simulations.map((sim) => {
+          const isExpanded = expandedIds.includes(sim.id);
+          return (
+            <div 
+                key={sim.id}
+                onClick={() => handleTileClick(sim.id)}
+                // We use inline styles for the viewTransitionName to uniquely identify each tile
+                style={{ viewTransitionName: `tile-${sim.id}` } as React.CSSProperties}
+                className={`cursor-pointer hover:z-10 relative transition-all duration-1000 ease-in-out
+                    ${isExpanded 
+                        ? 'md:col-span-2 md:row-span-2 z-20 shadow-2xl ring-1 ring-zinc-700' 
+                        : 'col-span-1 row-span-1'
+                    }
+                `}
+            >
+                <Tile 
+                    sim={sim} 
+                    audioDataRef={activeAudioRef} 
+                    shouldTimeAdvance={shouldTimeAdvance}
+                    resetTrigger={currentPatch} 
+                />
+            </div>
+          );
+        })}
       </div>
       
       {/* Library Section */}
@@ -167,7 +209,7 @@ export default function App() {
                     {Object.values(PRESETS).map((preset) => (
                         <button
                             key={preset.name}
-                            onClick={() => loadPatch(preset)}
+                            onClick={() => loadPatch(preset, true)}
                             className="bg-zinc-900 border border-zinc-800 p-3 rounded text-left hover:bg-zinc-800 transition-colors group"
                         >
                             <div className="font-bold text-sm text-white group-hover:text-blue-400 transition-colors">{preset.name}</div>
@@ -189,7 +231,7 @@ export default function App() {
                         {savedPatches.map((patch, index) => (
                             <div key={index} className="bg-zinc-900 border border-zinc-800 p-3 rounded flex justify-between items-center group hover:bg-zinc-800 transition-colors">
                                 <button 
-                                    onClick={() => loadPatch(patch)}
+                                    onClick={() => loadPatch(patch, true)}
                                     className="text-left flex-1 min-w-0"
                                 >
                                     <div className="font-bold text-sm text-white group-hover:text-green-400 transition-colors truncate">{patch.name}</div>
