@@ -30,10 +30,10 @@
 ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-[![Runtime](https://img.shields.io/badge/Runtime-Node.js%2018%2B-blue?style=flat-square&logo=node.js)](#)
-[![Framework](https://img.shields.io/badge/Framework-React%2018-cyan?style=flat-square&logo=react)](#)
-[![Builder](https://img.shields.io/badge/Builder-Vite%20&%20Esbuild-9c60ff?style=flat-square&logo=vite)](#)
-[![AI-Core](https://img.shields.io/badge/AI%20Core-Gemini%203.5%20Flash-red?style=flat-square&logo=google-gemini)](#)
+[![Runtime](https://img.shields.io/badge/Runtime-Cloudflare%20Pages-orange?style=flat-square&logo=cloudflare)](#)
+[![Framework](https://img.shields.io/badge/Framework-React%2019-cyan?style=flat-square&logo=react)](#)
+[![Builder](https://img.shields.io/badge/Builder-Vite-9c60ff?style=flat-square&logo=vite)](#)
+[![AI-Core](https://img.shields.io/badge/AI%20Core-Theorem%20%C2%B7%20Gemini%203.5%20Flash--Lite-red?style=flat-square&logo=google-gemini)](#)
 [![Styles](https://img.shields.io/badge/Styles-Tailwind%20CSS%20v4-38bdf8?style=flat-square&logo=tailwind-css)](#)
 
 ---
@@ -57,7 +57,7 @@ The engine converts visual structures, physical boundaries, and raw text descrip
 * **9 Mathematical Canvas Modes**: Ranging from orbital motion fields, complex attractor models, and particle flows to dynamic multi-point wireframes.
 * **Real-time Spectral Extraction**: Extracts live **FFT**, **Waveform**, **Spectral Centroid**, and **Spectral Flux** metrics to control canvas inertia and shape dispersion.
 
-### 3. Server-Proxy Gemini 3.5 Core
+### 3. Theorem-Served Gemini Core
 * **Contextual Refinement Network**: Modifies active patch parameters iteratively without losing the core rhythm.
 * **Multimodal Visual Sound Synthesis**: Converts uploaded context images directly into sound, analyzing mood, textures, and lines.
 * **Error Containment Layout**: Highlights and parses standard workspace error triggers (API keys, quotas, parsing, safety flags) into readable steps with dismissal gates.
@@ -68,10 +68,10 @@ The engine converts visual structures, physical boundaries, and raw text descrip
 
 ```text
  ┌───────────────────────┐         ┌────────────────────────┐
- │   React Front-End     │         │    Express Backend     │
+ │   React Front-End     │         │  Cloudflare Pages Fn   │
  │ ───────────────────── │         │ ────────────────────── │
- │ • Web Audio Context   │         │ • Secure API Endpoint  │
- │ • Canvas Renderers    │ ──────> │ • Gemini 3.5 model     │
+ │ • Web Audio Context   │         │ • Theorem handler      │
+ │ • Canvas Renderers    │ ──────> │ • Gemini 3.5 Flash-Lite│
  │ • File System Uploads │ <────── │ • Structured Mapping   │
  └───────────────────────┘         └────────────────────────┘
 ```
@@ -81,9 +81,7 @@ The engine converts visual structures, physical boundaries, and raw text descrip
 ## ⚙️ Prerequisites & Setup
 
 ### 1. Expose the Secret Keys
-Audio Physics executes Gemini queries entirely from the server interface. To activate synthesis, you must declare your API key:
-
-Create a `.env` or fill the workspace settings panel with:
+Audio Physics runs Gemini through a Theorem profile served from a Cloudflare Pages Function. For local dev, put the key in `.dev.vars` (gitignored):
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
@@ -93,13 +91,13 @@ GEMINI_API_KEY=your_gemini_api_key_here
 npm install
 ```
 
-### 3. Build & Serve locally
+### 3. Run & deploy
 ```bash
-# Build the application bundle and backend server
-npm run build
+# Local: wrangler serves the function and proxies Vite
+npm run dev
 
-# Start the optimized Node service on port 3000
-npm run start
+# Deploy to Cloudflare Pages (set the GEMINI_API_KEY secret on the project first)
+npm run deploy
 ```
 
 ---
@@ -107,5 +105,5 @@ npm run start
 ## 🎛️ Tech Specifications
 
 * **Audio Physics Engine**: Standardized on Web Audio API Nodes natively mapped to Canvas requestAnimationFrame grids.
-* **Server Middleware**: Custom Express core compiling `.ts` entries to standalone `dist/server.cjs` modules for maximized bundle loading speeds and ESM bypass.
+* **Server**: A Theorem profile (`theorem/profile.ts`) served by `@theoremjs/web` from a Cloudflare Pages Function (`functions/api/theorem/[[path]].ts`).
 * **Physical UI**: Engineered with custom Tailwind CSS properties and motion curves representing raw steel dials and analog-grade laboratory equipment.

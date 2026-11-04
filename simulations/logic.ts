@@ -16,18 +16,6 @@ const drawEquationOverlay = (
   const barHeight = 24;
   const padding = 12;
   
-  // Background
-  ctx.fillStyle = 'rgba(9, 9, 11, 0.85)';
-  ctx.fillRect(0, height - barHeight, width, barHeight);
-  
-  // Border Top
-  ctx.strokeStyle = '#27272a';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, height - barHeight);
-  ctx.lineTo(width, height - barHeight);
-  ctx.stroke();
-  
   // Text Config
   ctx.font = '10px "Space Grotesk", monospace';
   ctx.textBaseline = 'middle';

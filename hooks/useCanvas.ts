@@ -61,7 +61,8 @@ export const useCanvas = (
 
     // Handle high DPI displays
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
+    // Layout size, so a CSS scale on an ancestor doesn't resize the backing store every frame.
+    const rect = { width: canvas.clientWidth, height: canvas.clientHeight };
     
     if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
       canvas.width = rect.width * dpr;
