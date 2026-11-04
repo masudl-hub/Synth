@@ -2,6 +2,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { SynthEngine } from '../audio/SynthEngine';
 import { AudioFeatures, SynthPatch, NoteEvent } from '../types';
+import { silentFeatures } from '../audio/analysis';
 
 const DEFAULT_PATCH: SynthPatch = {
     name: "Atmospheric Pulse",
@@ -144,11 +145,7 @@ export const useGenerativeAudio = () => {
   const [savedPatches, setSavedPatches] = useState<SynthPatch[]>([]);
 
   // Refs for audio visualizer connection
-  const audioDataRef = useRef<AudioFeatures>({
-      volume: 0, bass: 0, mid: 0, treble: 0,
-      fft: new Uint8Array(128), waveform: new Uint8Array(128),
-      centroid: 0, flux: 0
-  });
+  const audioDataRef = useRef<AudioFeatures>(silentFeatures());
 
   useEffect(() => {
     // Init Synth Engine

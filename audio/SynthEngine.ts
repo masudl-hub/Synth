@@ -1,9 +1,10 @@
 
 import { AudioFeatures, SynthPatch } from '../types';
+import { FeatureExtractor, createAnalysers, silentFeatures } from './analysis';
 
 export class SynthEngine {
   private ctx: AudioContext;
-  private analyser: AnalyserNode;
+  private extractor: FeatureExtractor;
   private masterGain: GainNode;
   private voiceOutput: GainNode;
   
@@ -34,14 +35,10 @@ export class SynthEngine {
 
   // Analysis State
   private rafId: number | undefined;
-  private prevFFT: Uint8Array;
   public audioData: AudioFeatures;
 
   constructor() {
     this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    this.analyser = this.ctx.createAnalyser();
-    this.analyser.fftSize = 256;
-    this.analyser.smoothingTimeConstant = 0.7; 
     
     // Graph: Voices -> VoiceOutput -> MasterFilter -> (Sends + Dry) -> MasterGain -> Analyser -> Dest
     
@@ -82,20 +79,10 @@ export class SynthEngine {
     this.masterFilter.connect(this.convolver);  // Send to reverb
     
     // Connect Master to Output
-    this.masterGain.connect(this.analyser);
-    this.analyser.connect(this.ctx.destination);
-
-    this.prevFFT = new Uint8Array(this.analyser.frequencyBinCount);
-    this.audioData = {
-      volume: 0,
-      bass: 0,
-      mid: 0,
-      treble: 0,
-      fft: new Uint8Array(this.analyser.frequencyBinCount),
-      waveform: new Uint8Array(this.analyser.frequencyBinCount),
-      centroid: 0,
-      flux: 0
-    };
+    const { lo, hi } = createAnalysers(this.ctx, this.masterGain);
+    this.extractor = new FeatureExtractor(lo, hi);
+    this.masterGain.connect(this.ctx.destination);
+    this.audioData = silentFeatures(this.ctx.sampleRate);
     
     this.loopAnalysis();
   }
@@ -346,54 +333,7 @@ export class SynthEngine {
   }
 
   private loopAnalysis = () => {
-    const bufferLength = this.analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    const waveformArray = new Uint8Array(bufferLength);
-
-    this.analyser.getByteFrequencyData(dataArray);
-    this.analyser.getByteTimeDomainData(waveformArray);
-
-    let bassSum = 0, midSum = 0, trebleSum = 0;
-    let totalMag = 0, weightedSum = 0;
-    let fluxSum = 0;
-
-    for (let i = 0; i < bufferLength; i++) {
-        const val = dataArray[i] / 255;
-        
-        if (i < 5) bassSum += val;
-        else if (i < 30) midSum += val;
-        else trebleSum += val;
-        
-        totalMag += val;
-        weightedSum += val * i;
-        
-        const prevVal = this.prevFFT[i] / 255;
-        const diff = val - prevVal;
-        if (diff > 0) fluxSum += diff;
-    }
-    
-    this.prevFFT.set(dataArray);
-
-    const bass = Math.min(1, bassSum / 5);
-    const mid = Math.min(1, midSum / 25);
-    const treble = Math.min(1, trebleSum / 98);
-    const volume = (bass + mid + treble) / 3;
-    
-    let centroid = 0;
-    if (totalMag > 0) {
-        centroid = (weightedSum / totalMag) / (bufferLength / 2);
-    }
-    
-    const flux = Math.min(1, fluxSum / 8);
-
-    this.audioData = {
-        volume, bass, mid, treble, 
-        fft: dataArray, 
-        waveform: waveformArray, 
-        centroid: Math.min(1, centroid), 
-        flux
-    };
-
+    this.audioData = this.extractor.read();
     this.rafId = requestAnimationFrame(this.loopAnalysis);
   }
 }

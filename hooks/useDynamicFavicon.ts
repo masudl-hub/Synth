@@ -1,8 +1,8 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import { AudioFeatures } from '../types';
 
-export const useDynamicFavicon = (audioDataRef: React.MutableRefObject<AudioFeatures>) => {
+export const useDynamicFavicon = (audioDataRef: MutableRefObject<AudioFeatures>) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const linkRef = useRef<HTMLLinkElement | null>(null);
   const rafRef = useRef<number | null>(null);

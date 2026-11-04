@@ -5,14 +5,19 @@ export interface Point {
 }
 
 export interface AudioFeatures {
-  volume: number;   // 0 to 1 smoothed volume
-  bass: number;     // 0 to 1
-  mid: number;      // 0 to 1
-  treble: number;   // 0 to 1
-  fft: Uint8Array;  // Raw frequency data
-  waveform: Uint8Array; // Time domain data (actual wave shape)
-  centroid: number; // Spectral Centroid (Timbre/Brightness/Pitch approximation)
-  flux: number;     // Spectral Flux (Rhythmic Onset/Change)
+  volume: number;   // RMS level, -60..0 dBFS mapped to 0..1
+  bass: number;     // 20-250 Hz band level, 0..1 (dB-mapped bytes)
+  mid: number;      // 250-4000 Hz band level, 0..1
+  treble: number;   // 4-20 kHz band level, 0..1
+  fft: Uint8Array;  // 128-bin display spectrum, 0..Nyquist, dB-mapped bytes
+  waveform: Uint8Array; // 128 most recent samples, 128 = zero
+  centroid: number; // Spectral centroid on a log axis, 100 Hz..8 kHz mapped to 0..1
+  centroidHz: number; // Spectral centroid in Hz
+  flux: number;     // Spectral flux (onset strength), 0..1
+  peakHz: number;   // Loudest spectral peak in Hz, 0 when silent
+  chroma: Float32Array; // 12 pitch classes from C, peak = 1, all zero when silent
+  scope: Float32Array;  // 2048 most recent samples, -1..1
+  sampleRate: number;
 }
 
 export interface SimulationContext {
@@ -31,6 +36,12 @@ export interface SimulationDef {
   id: number;
   title: string;
   description: string;
+  /** How closely the drawing follows its source: computed as published, an idealised form, borrowed idea, or invented. */
+  fidelity: 'computes' | 'idealised' | 'inspired' | 'artistic';
+  /** Source of the idea: author, work, year. */
+  reference: string;
+  /** The relation the drawing computes, as shown in the on-canvas overlay. */
+  formula: string;
   draw: DrawFunction;
 }
 
