@@ -4,7 +4,10 @@ import { z } from "zod";
 export const KEY_SLOT = "gemini";
 export const FALLBACK_KEY_SLOT = "gemini-b";
 
-export const WEEKLY_GENERATIONS = 15;
+// Generations per week: one browser (cookie) gets 10, and one IP gets 35 across all its browsers, so an
+// office or VPN can share a connection while clearing cookies still can't run up the key.
+export const WEEKLY_PER_BROWSER = 10;
+export const WEEKLY_PER_IP = 35;
 
 const PATCH_SCHEMA_ID = "synth.patch";
 
@@ -83,9 +86,9 @@ registerStructured(PATCH_SCHEMA_ID, { jsonSchema: z.toJSONSchema(patchSchema) as
 export const synthProfile = defineProfile({
   type: "text",
   id: "synth.patch",
-  // Generations an IP gets per week. Theorem's quota is per day, so the Pages function reads the number
-  // from here and counts it over a week itself (see functions/api/theorem/[[path]].ts).
-  guardrails: { quota: { perDay: WEEKLY_GENERATIONS } },
+  // Theorem's quota is per day, so the Pages function counts these over a week itself
+  // (see functions/api/theorem/[[path]].ts) and uses the quota only for its refusal.
+  guardrails: { quota: { perDay: WEEKLY_PER_BROWSER } },
   labels: { "quota.exhausted": "You've used this week's {perDay} generations. Come back in a few days." },
   identity: { handle: "synth", system: SYSTEM },
   models: {
