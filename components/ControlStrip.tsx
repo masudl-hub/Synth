@@ -29,7 +29,7 @@ interface ControlStripProps {
   arrival?: number;
 }
 
-// The wave shapes in the order the button steps through them; its icon is the shape a click switches to.
+// The wave shapes in the order the button steps through them; its icon is the shape it's on.
 type OscillatorShape = SynthPatch['oscillator']['type'];
 const SHAPES: { type: OscillatorShape; icon: React.ReactElement }[] = [
   { type: 'sine', icon: <IconWaveSine /> },
@@ -110,11 +110,11 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
         <HStack key={`controls-${arrival}`} gap={4} align="center" className={arrival ? 'strip__controls strip__arrive strip__arrive--late' : 'strip__controls'}>
           <HStack gap={4} align="center" className="strip__sliders">
             <ToggleButton
-              label={`Wave: ${current}. Switch to ${next.type}`}
-              tooltip={`Wave: ${current}. Switch to ${next.type}`}
+              label={`Wave: ${current}. Click for ${next.type}`}
+              tooltip={`Wave: ${current}. Click for ${next.type}`}
               variant="ghost"
               isIconOnly
-              icon={next.icon}
+              icon={SHAPES.find((s) => s.type === current)?.icon ?? SHAPES[0].icon}
               isPressed={false}
               isDisabled={!currentPatch}
               onPressedChange={() => onCycleOscillator(next.type)}
