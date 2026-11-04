@@ -54,7 +54,7 @@ export interface NoteEvent {
   velocity?: number; // 0.1 to 1: how hard the note is played; 1 (the default) is full level
 }
 
-export type WaveShape = 'sine' | 'square' | 'sawtooth' | 'triangle';
+export type WaveShape = 'sine' | 'square' | 'sawtooth' | 'triangle' | 'pulse' | 'organ' | 'bell';
 
 export interface DrumEvent {
   type: 'kick' | 'snare' | 'hat' | 'clap';

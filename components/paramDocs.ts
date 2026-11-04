@@ -9,7 +9,7 @@ export const PARAM_DOCS = [
     { 
         section: "Tone (Oscillator)", 
         items: [
-            { key: "type", desc: "The character of the sound. Options: 'sine' (smooth/pure), 'triangle' (soft/hollow), 'square' (retro/gameboy), 'sawtooth' (sharp/buzzy)." },
+            { key: "type", desc: "The character of the sound. Options: 'sine' (smooth/pure), 'triangle' (soft/hollow), 'square' (retro/gameboy), 'sawtooth' (sharp/buzzy), 'pulse' (thin, nasal), 'organ' (full, reedy), 'bell' (glassy, ringing)." },
             { key: "fmAmount", desc: "0 to 100. Frequency Modulation depth. 0 is clean. High values (50+) add metallic grit, bell-like tones, or noise." },
             { key: "fmRatio", desc: "0.25 to 8. Modulator pitch as a multiple of the note. Whole numbers (1, 2, 3) are harmonic; 1.4 or 3.5 are bell-like and metallic; under 1 is hollow. Default 2." },
             { key: "fmWave", desc: "Shape of the FM modulator: 'sine' is clean and bell-like; omit it to follow the carrier's shape, which is grittier." },

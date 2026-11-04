@@ -134,6 +134,25 @@ export class SynthEngine {
   }
 
   /** Notes not yet played use the new shape; the ones sounding finish as they were. */
+  private waves: Partial<Record<string, PeriodicWave>> = {};
+
+  // The four built-in shapes, plus three drawn from harmonics: a thin 25% pulse, an organ's drawbars, a bell's partials.
+  private setWave(osc: OscillatorNode, shape: string) {
+    const harmonics: Record<string, (n: number) => number> = {
+      pulse: (n) => (2 / (n * Math.PI)) * Math.sin(n * Math.PI * 0.25),
+      organ: (n) => ({ 1: 1, 2: 0.7, 3: 0.5, 4: 0.35, 6: 0.2, 8: 0.15 } as Record<number, number>)[n] ?? 0,
+      bell: (n) => ({ 1: 1, 2: 0.55, 4: 0.45, 5: 0.2, 6: 0.3, 8: 0.15 } as Record<number, number>)[n] ?? 0,
+    };
+    const weight = harmonics[shape];
+    if (!weight) { osc.type = shape as OscillatorType; return; }
+    if (!this.waves[shape]) {
+      const real = new Float32Array(33), imag = new Float32Array(33);
+      for (let n = 1; n < 33; n++) imag[n] = weight(n);
+      this.waves[shape] = this.ctx.createPeriodicWave(real, imag);
+    }
+    osc.setPeriodicWave(this.waves[shape]!);
+  }
+
   public setOscillatorType(type: SynthPatch['oscillator']['type']) {
       if (this.currentPatch) this.currentPatch = { ...this.currentPatch, oscillator: { ...this.currentPatch.oscillator, type } };
   }
@@ -280,11 +299,11 @@ export class SynthEngine {
     const fmAmount = Number(this.currentPatch.oscillator.fmAmount) || 0;
     
     // OSC 1 (Carrier)
-    osc.type = oscType;
+    this.setWave(osc, oscType);
     osc.frequency.value = freq;
     
     // OSC 2 (Modulator or Layer)
-    osc2.type = type === 'bass' ? 'sine' : oscType;
+    this.setWave(osc2, type === 'bass' ? 'sine' : oscType);
     osc2.detune.value = detune;
     
     // Filter
@@ -304,7 +323,7 @@ export class SynthEngine {
         // True FM Synthesis
         // Osc2 modulates Osc1 frequency
         osc2.frequency.value = freq * (Number(this.currentPatch.oscillator.fmRatio) || 2.0);
-        if (this.currentPatch.oscillator.fmWave) osc2.type = this.currentPatch.oscillator.fmWave;
+        if (this.currentPatch.oscillator.fmWave) this.setWave(osc2, this.currentPatch.oscillator.fmWave);
         
         const modGain = this.ctx.createGain();
         // FM Depth formula: modulationIndex * modulatorFrequency
@@ -375,7 +394,7 @@ export class SynthEngine {
         if (layerFreq >= SUB_MIN_HZ && layerFreq < 12000) {
             const layerOsc = this.ctx.createOscillator();
             const layerGain = this.ctx.createGain();
-            layerOsc.type = layer.type;
+            this.setWave(layerOsc, layer.type);
             layerOsc.frequency.value = layerFreq;
             layerOsc.detune.value = Number(layer.detune) || 0;
             layerGain.gain.value = clamp(Number(layer.mix), 0, 1) * 0.8;

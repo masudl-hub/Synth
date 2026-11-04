@@ -157,7 +157,7 @@ export const useGenerativeAudio = () => {
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   const velocityOf = (v: unknown) => (v == null || v === '' ? 1 : clamp(Number(v) || 1, 0.1, 1));
 
-  const WAVES = ['sine', 'square', 'sawtooth', 'triangle'];
+  const WAVES = ['sine', 'square', 'sawtooth', 'triangle', 'pulse', 'organ', 'bell'];
 
   const sanitizePatch = (patch: any): SynthPatch => {
       // Ensure numerical safety and required structure

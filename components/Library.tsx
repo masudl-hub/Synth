@@ -30,6 +30,9 @@ const WAVES: Record<Osc, string> = {
   square: 'M0 20 V7 H30 V33 H60 V7 H90 V33 H120 V20',
   sawtooth: 'M0 20 L15 7 V33 L45 7 V33 L75 7 V33 L105 7 V33 L120 20',
   triangle: 'M0 20 L15 7 L45 33 L75 7 L105 33 L120 20',
+  pulse: 'M0 33 V7 H15 V33 H60 V7 H75 V33 H120',
+  organ: Array.from({ length: 81 }, (_, i) => { const t = (i / 40) * 2 * Math.PI; return `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - 8 * (Math.sin(t) + 0.6 * Math.sin(2 * t) + 0.4 * Math.sin(3 * t)) / 1.6).toFixed(2)}`; }).join(' '),
+  bell: Array.from({ length: 81 }, (_, i) => { const t = (i / 40) * 2 * Math.PI; return `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - 9 * (Math.sin(t) + 0.5 * Math.sin(4 * t)) / 1.5).toFixed(2)}`; }).join(' '),
 };
 
 /** Patches as colourful cards: a live-drawn waveform, name, and loop length. */

@@ -11,7 +11,7 @@ export const WEEKLY_PER_IP = 35;
 
 const PATCH_SCHEMA_ID = "synth.patch";
 
-const wave = z.enum(["sine", "square", "sawtooth", "triangle"]);
+const wave = z.enum(["sine", "square", "sawtooth", "triangle", "pulse", "organ", "bell"]);
 
 const note = z.object({
   freq: z.number().describe("Frequency in Hz, never a note name."),

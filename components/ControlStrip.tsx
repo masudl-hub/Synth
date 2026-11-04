@@ -8,7 +8,7 @@ import { Text } from '@astryxdesign/core/Text';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconBooks, IconCode, IconPlayerPause, IconPlayerPlay, IconTriangle, IconWaveSawTool, IconWaveSine, IconWaveSquare } from '@tabler/icons-react';
+import { IconActivity, IconBell, IconBooks, IconCode, IconPiano, IconPlayerPause, IconPlayerPlay, IconTriangle, IconWaveSawTool, IconWaveSine, IconWaveSquare } from '@tabler/icons-react';
 import { JsonEditor } from './JsonEditor';
 import { PARAM_DOCS } from './paramDocs';
 import { SynthPatch } from '../types';
@@ -36,6 +36,9 @@ const SHAPES: { type: OscillatorShape; icon: React.ReactElement }[] = [
   { type: 'triangle', icon: <IconTriangle /> },
   { type: 'sawtooth', icon: <IconWaveSawTool /> },
   { type: 'square', icon: <IconWaveSquare /> },
+  { type: 'pulse', icon: <IconActivity /> },
+  { type: 'organ', icon: <IconPiano /> },
+  { type: 'bell', icon: <IconBell /> },
 ];
 
 // Descriptions can run long; keep the first ~45 characters, cut on a word, and show the rest on hover.
