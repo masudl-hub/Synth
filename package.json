@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler pages dev --proxy 3000 -- vite",
+    "dev": "vite build --watch --logLevel warn & wrangler pages dev dist",
     "build": "vite build",
     "deploy": "npm run build && wrangler pages deploy dist --project-name audio-physics --branch main"
   },
