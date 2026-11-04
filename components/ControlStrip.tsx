@@ -18,7 +18,6 @@ interface ControlStripProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   bpm: number; updateBpm: (v: number) => void;
-  volume: number; updateVolume: (v: number) => void;
   filterFreq: number; updateFilter: (v: number) => void;
   onCycleOscillator: (type: OscillatorShape) => void;
   onOpenLibrary: () => void;
@@ -54,7 +53,7 @@ const fromLog = (t: number) => FILTER_MIN * Math.pow(FILTER_MAX / FILTER_MIN, t)
 
 export const ControlStrip: React.FC<ControlStripProps> = ({
   currentPatch, isPlaying, onTogglePlay,
-  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onCycleOscillator, onOpenLibrary, onUpdatePatch, isHidden = false, arrival = 0,
+  bpm, updateBpm, filterFreq, updateFilter, onCycleOscillator, onOpenLibrary, onUpdatePatch, isHidden = false, arrival = 0,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [jsonCode, setJsonCode] = useState('');
@@ -125,11 +124,6 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
               <Slider label="BPM" isLabelHidden containerClassName="strip__field" min={40} max={240} value={bpm} onChange={updateBpm} />
             </HStack>
             <HStack gap={2} align="center" className="strip__slider">
-              <Text type="supporting" size="xsm">Volume</Text>
-              <Slider label="Volume" isLabelHidden containerClassName="strip__field" min={0} max={1} step={0.01} value={volume}
-                onChange={updateVolume} formatValue={(v) => `${Math.round(v * 100)}%`} />
-            </HStack>
-            <HStack gap={2} align="center" className="strip__slider">
               <Text type="supporting" size="xsm">Filter</Text>
               <Slider label="Filter" isLabelHidden containerClassName="strip__field" min={0} max={1} step={0.005} value={toLog(filterFreq)}
                 onChange={(t) => updateFilter(Math.round(fromLog(t)))}
@@ -137,9 +131,9 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
             </HStack>
           </HStack>
           <HStack gap={1} align="center">
-            <IconButton label="Library" tooltip="Library" variant="ghost" icon={<IconBooks />} onClick={onOpenLibrary} />
             <IconButton label="Edit patch JSON" tooltip="Edit patch JSON" variant="ghost" icon={<IconCode />}
               isDisabled={!currentPatch} onClick={() => setIsEditing(true)} />
+            <IconButton label="Library" tooltip="Library" variant="ghost" icon={<IconBooks />} onClick={onOpenLibrary} />
           </HStack>
         </HStack>
       </VStack>
