@@ -2,3 +2,7 @@ pages_build_output_dir = "dist"
 name = "audio-physics"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "QUOTA"
+id = "07fbb71f2d5d454790f95dee60794e89"

@@ -4,6 +4,8 @@ import { z } from "zod";
 export const KEY_SLOT = "gemini";
 export const FALLBACK_KEY_SLOT = "gemini-b";
 
+export const WEEKLY_GENERATIONS = 15;
+
 const PATCH_SCHEMA_ID = "synth.patch";
 
 const note = z.object({
@@ -81,6 +83,10 @@ registerStructured(PATCH_SCHEMA_ID, { jsonSchema: z.toJSONSchema(patchSchema) as
 export const synthProfile = defineProfile({
   type: "text",
   id: "synth.patch",
+  // Generations an IP gets per week. Theorem's quota is per day, so the Pages function reads the number
+  // from here and counts it over a week itself (see functions/api/theorem/[[path]].ts).
+  guardrails: { quota: { perDay: WEEKLY_GENERATIONS } },
+  labels: { "quota.exhausted": "You've used this week's {perDay} generations. Come back in a few days." },
   identity: { handle: "synth", system: SYSTEM },
   models: {
     main: {
