@@ -59,36 +59,37 @@ export default function App() {
 
         <SimCarousel audioDataRef={activeAudioRef} shouldTimeAdvance={shouldTimeAdvance} resetTrigger={currentPatch} />
 
-        {audioSource === 'synth' ? (
-          <ControlStrip
-            currentPatch={currentPatch}
-            isPlaying={isPlaying}
-            onTogglePlay={togglePlay}
-            bpm={bpm} updateBpm={updateBpm}
-            volume={volume} updateVolume={updateVolume}
-            filterFreq={filterFreq} updateFilter={updateFilter}
-            onSave={saveCurrentPatch}
-            onUpdatePatch={loadPatch}
-          />
-        ) : <div />}
+        <ControlStrip
+          isHidden={audioSource !== 'synth'}
+          currentPatch={currentPatch}
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          bpm={bpm} updateBpm={updateBpm}
+          volume={volume} updateVolume={updateVolume}
+          filterFreq={filterFreq} updateFilter={updateFilter}
+          onSave={saveCurrentPatch}
+          onUpdatePatch={loadPatch}
+        />
 
-        <HStack gap={3} align="center" className="dock">
-          <div className="dock__main">
-            {audioSource === 'mic' ? (
-              <MicPanel isLive={isMicLive} onStart={startMic} />
-            ) : (
-              <Composer currentPatch={currentPatch} onPatch={loadGenerated} />
-            )}
+        {/* Fixed height: the composer is pinned to its bottom and grows up into the gap, never pushing the page. */}
+        <HStack gap={3} align="end" className="dock">
+          <div className="dock__slot">
+            <div className="dock__float">
+              {audioSource === 'mic' ? (
+                <MicPanel isLive={isMicLive} onStart={startMic} />
+              ) : (
+                <Composer currentPatch={currentPatch} onPatch={loadGenerated} />
+              )}
+            </div>
           </div>
-          {audioSource === 'synth' && (
-            <IconButton
-              label="Library"
-              tooltip="Library"
-              variant="ghost"
-              icon={<IconBooks />}
-              onClick={() => setShowLibrary(true)}
-            />
-          )}
+          <IconButton
+            label="Library"
+            tooltip="Library"
+            variant="ghost"
+            icon={<IconBooks />}
+            isDisabled={audioSource !== 'synth'}
+            onClick={() => setShowLibrary(true)}
+          />
         </HStack>
 
         <Dialog isOpen={showLibrary} onOpenChange={setShowLibrary} width="min(48rem, 94vw)">

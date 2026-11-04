@@ -18,6 +18,6 @@ export const MicPanel: React.FC<MicPanelProps> = ({ isLive, onStart }) => (
         {isLive ? 'Listening. The visuals react to your environment.' : 'Enable the microphone to visualize outside sound.'}
       </Text>
     </VStack>
-    {!isLive && <Button label="Enable microphone" variant="primary" icon={<IconMicrophone />} onClick={onStart} />}
+    {!isLive && <Button label="Enable mic" variant="primary" icon={<IconMicrophone />} onClick={onStart} />}
   </HStack>
 );

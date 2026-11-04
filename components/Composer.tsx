@@ -1,17 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Banner } from '@astryxdesign/core/Banner';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
-import { TextInput } from '@astryxdesign/core/TextInput';
+import { TextArea } from '@astryxdesign/core/TextArea';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 import { attachmentIssueText } from '@theoremjs/agents';
 import { createHttpTransport } from '@theoremjs/react/client';
 import { useTheoremChat, useTheoremInterface } from '@theoremjs/react';
 import {
-  IconArrowUp, IconHourglassHigh, IconMicrophone, IconPaperclip, IconPlayerStopFilled,
+  IconArrowUp, IconHourglassHigh, IconMicrophone, IconPaperclip, IconPlayerStopFilled, IconX,
 } from '@tabler/icons-react';
 import type { SynthPatch } from '../types';
 
@@ -98,22 +98,53 @@ const ComposerBody: React.FC<ComposerProps & {
 
   const send = () => { if (hasContent && !isStreaming) void chat.handleSubmit(); };
 
+  // Grow with the text; CSS caps the height to the gap above the dock, then it scrolls.
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [chat.draftText]);
+
+  // Enter sends; Shift+Enter starts a new line.
+  const sendRef = useRef(send);
+  sendRef.current = send;
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        sendRef.current();
+      }
+    };
+    el.addEventListener('keydown', onKey);
+    return () => el.removeEventListener('keydown', onKey);
+  }, []);
+
+  const hasTray = chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0 || problems.length > 0;
+
   return (
-    <VStack gap={1} width="100%">
-      {(chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0) && (
-        <HStack gap={1} wrap>
+    <VStack gap={2} width="100%" className="composer">
+      {hasTray && (
+        <HStack gap={2} align="center" className="composer__tray">
           {chat.pendingFiles.map((file, i) => (
-            <Token key={`${file.name}-${i}`} size="sm" label={file.name}
+            <Thumbnail key={`${file.name}-${i}`} file={file}
               onRemove={() => chat.setPendingFiles((prev) => prev.filter((_, j) => j !== i))} />
           ))}
           {chat.pendingVoice.map((file) => (
             <Token key={file.name} size="sm" label="Voice note" icon={<IconMicrophone size={12} />}
               onRemove={() => chat.setPendingVoice([])} />
           ))}
+          {problems.map((message) => (
+            <Text key={message} type="supporting" size="xsm" maxLines={2} color="inherit"
+              style={{ color: 'var(--color-text-error)' }}>{message}</Text>
+          ))}
         </HStack>
       )}
 
-      <HStack gap={1} align="center" className="composer">
+      <HStack gap={1} align="center" width="100%" className="composer__row">
         <input
           ref={fileInput} type="file" multiple accept="image/*" hidden
           onChange={(e) => {
@@ -123,12 +154,12 @@ const ComposerBody: React.FC<ComposerProps & {
             e.target.value = '';
           }}
         />
-        <IconButton label="Attach image" size="sm" variant="ghost" icon={<IconPaperclip />}
+        <IconButton label="Attach image" variant="ghost" icon={<IconPaperclip />}
           isDisabled={isStreaming} onClick={() => fileInput.current?.click()} />
 
         {loop && (
           <Selector
-            label={loop[1].label ?? 'Loop length'} isLabelHidden size="sm" variant="ghost" placement="above"
+            label={loop[1].label ?? 'Loop length'} isLabelHidden variant="ghost" placement="above"
             startIcon={<IconHourglassHigh size={14} />}
             isDisabled={isStreaming} containerStyle={{ flex: 'none' }}
             value={chat.optionChoices?.values[loop[0]] ?? ''}
@@ -137,10 +168,12 @@ const ComposerBody: React.FC<ComposerProps & {
           />
         )}
 
-        <TextInput
+        <TextArea
+          ref={textRef} rows={1}
           label="Describe a sound" isLabelHidden width="100%"
           placeholder={currentPatch ? 'Describe a sound, or refine this patch' : 'Describe a sound'}
-          value={chat.draftText} onChange={chat.setDraftText} onEnter={send}
+          value={chat.draftText} onChange={chat.setDraftText} enterKeyHint="send"
+          containerStyle={{ flex: 1, minWidth: 0 }}
           controlClassName="composer__input"
         />
 
@@ -154,10 +187,23 @@ const ComposerBody: React.FC<ComposerProps & {
             icon={voice.recording ? <IconPlayerStopFilled /> : <IconMicrophone />} onClick={voice.toggle} />
         )}
       </HStack>
-
-      {problems.map((message) => (
-        <Text key={message} type="supporting" size="xsm" color="inherit" style={{ color: 'var(--color-text-error)' }}>{message}</Text>
-      ))}
     </VStack>
+  );
+};
+
+/** A staged image, shown as itself, with a remove button. */
+const Thumbnail: React.FC<{ file: File; onRemove: () => void }> = ({ file, onRemove }) => {
+  // Made in the effect, so StrictMode's re-run can't leave a revoked URL behind.
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return (
+    <span className="composer__thumb">
+      {url && <img src={url} alt={file.name} />}
+      <IconButton label={`Remove ${file.name}`} size="sm" variant="secondary" icon={<IconX />} onClick={onRemove} />
+    </span>
   );
 };

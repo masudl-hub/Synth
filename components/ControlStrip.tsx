@@ -20,6 +20,8 @@ interface ControlStripProps {
   filterFreq: number; updateFilter: (v: number) => void;
   onSave: () => void;
   onUpdatePatch: (patch: SynthPatch, playOnLoad: boolean) => void;
+  /** Keeps the strip's space while hidden, so the page never moves. */
+  isHidden?: boolean;
 }
 
 // The filter cutoff sweeps by octaves, so the slider works on a log scale.
@@ -30,7 +32,7 @@ const fromLog = (t: number) => FILTER_MIN * Math.pow(FILTER_MAX / FILTER_MIN, t)
 
 export const ControlStrip: React.FC<ControlStripProps> = ({
   currentPatch, isPlaying, onTogglePlay,
-  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onSave, onUpdatePatch,
+  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onSave, onUpdatePatch, isHidden = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [jsonCode, setJsonCode] = useState('');
@@ -62,47 +64,55 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
 
   return (
     <>
-      <HStack gap={4} align="center" justify="center" className="strip">
-        <IconButton
-          label={isPlaying ? 'Pause' : 'Play'}
-          tooltip={isPlaying ? 'Pause' : 'Play'}
-          variant="primary"
-          icon={isPlaying ? <IconPlayerPause /> : <IconPlayerPlay />}
-          isDisabled={!currentPatch}
-          onClick={onTogglePlay}
-        />
-        <VStack gap={0}>
-          <Text type="label" maxLines={1}>{currentPatch?.name ?? 'No patch'}</Text>
-          <Text type="supporting" size="xsm" maxLines={1}>{currentPatch?.description ?? ''}</Text>
-        </VStack>
-        <HStack gap={4} align="center">
-          <HStack gap={2} align="center">
-            <Text type="supporting" size="xsm">BPM</Text>
-            <Slider label="BPM" isLabelHidden width="7rem" min={40} max={240} value={bpm} onChange={updateBpm} />
+      {/* Two fixed rows: what's playing, then how it sounds. The description is one truncated line,
+          so the strip's height never depends on the patch. */}
+      <VStack gap={3} align="center" className={isHidden ? 'strip strip--hidden' : 'strip'}>
+        <HStack gap={3} align="center" className="strip__now">
+          <IconButton
+            label={isPlaying ? 'Pause' : 'Play'}
+            tooltip={isPlaying ? 'Pause' : 'Play'}
+            variant="primary"
+            icon={isPlaying ? <IconPlayerPause /> : <IconPlayerPlay />}
+            isDisabled={!currentPatch}
+            onClick={onTogglePlay}
+          />
+          <VStack gap={0} className="strip__name">
+            <Text type="label" maxLines={1}>{currentPatch?.name ?? 'No patch'}</Text>
+            <Text type="supporting" size="xsm" maxLines={1}>{currentPatch?.description ?? ''}</Text>
+          </VStack>
+        </HStack>
+        <HStack gap={4} align="center" className="strip__controls">
+          <HStack gap={4} align="center" className="strip__sliders">
+            <HStack gap={2} align="center" className="strip__slider">
+              <Text type="supporting" size="xsm">BPM</Text>
+              <Slider label="BPM" isLabelHidden containerClassName="strip__field" min={40} max={240} value={bpm} onChange={updateBpm} />
+            </HStack>
+            <HStack gap={2} align="center" className="strip__slider">
+              <Text type="supporting" size="xsm">Volume</Text>
+              <Slider label="Volume" isLabelHidden containerClassName="strip__field" min={0} max={1} step={0.01} value={volume}
+                onChange={updateVolume} formatValue={(v) => `${Math.round(v * 100)}%`} />
+            </HStack>
+            <HStack gap={2} align="center" className="strip__slider">
+              <Text type="supporting" size="xsm">Filter</Text>
+              <Slider label="Filter" isLabelHidden containerClassName="strip__field" min={0} max={1} step={0.005} value={toLog(filterFreq)}
+                onChange={(t) => updateFilter(Math.round(fromLog(t)))}
+                formatValue={(t) => `${Math.round(fromLog(t))} Hz`} />
+            </HStack>
           </HStack>
-          <HStack gap={2} align="center">
-            <Text type="supporting" size="xsm">Volume</Text>
-            <Slider label="Volume" isLabelHidden width="7rem" min={0} max={1} step={0.01} value={volume}
-              onChange={updateVolume} formatValue={(v) => `${Math.round(v * 100)}%`} />
-          </HStack>
-          <HStack gap={2} align="center">
-            <Text type="supporting" size="xsm">Filter</Text>
-            <Slider label="Filter" isLabelHidden width="7rem" min={0} max={1} step={0.005} value={toLog(filterFreq)}
-              onChange={(t) => updateFilter(Math.round(fromLog(t)))}
-              formatValue={(t) => `${Math.round(fromLog(t))} Hz`} />
+          <HStack gap={1} align="center">
+            <IconButton label={justSaved ? 'Saved' : 'Save to library'} tooltip={justSaved ? 'Saved' : 'Save to library'}
+              variant="ghost" icon={justSaved ? <IconCheck /> : <IconDeviceFloppy />}
+              isDisabled={!currentPatch} onClick={() => { onSave(); setJustSaved(true); }} />
+            <IconButton label="Edit patch JSON" tooltip="Edit patch JSON" variant="ghost" icon={<IconCode />}
+              isDisabled={!currentPatch} onClick={() => setIsEditing(true)} />
           </HStack>
         </HStack>
-        <IconButton label={justSaved ? 'Saved' : 'Save to library'} tooltip={justSaved ? 'Saved' : 'Save to library'}
-          variant="ghost" icon={justSaved ? <IconCheck /> : <IconDeviceFloppy />}
-          isDisabled={!currentPatch} onClick={() => { onSave(); setJustSaved(true); }} />
-        <IconButton label="Edit patch JSON" tooltip="Edit patch JSON" variant="ghost" icon={<IconCode />}
-          isDisabled={!currentPatch} onClick={() => setIsEditing(true)} />
-      </HStack>
+      </VStack>
 
       <Dialog isOpen={isEditing} onOpenChange={setIsEditing} width="min(72rem, 94vw)" purpose="form">
         <DialogHeader title="Patch source" onOpenChange={setIsEditing} />
-        <HStack gap={4} align="start" padding={4}>
-          <VStack gap={2} width="100%">
+        <HStack gap={4} align="start" padding={4} wrap="wrap" className="patch-editor">
+          <VStack gap={2} className="patch-editor__source">
             <TextArea
               label="Patch JSON"
               isLabelHidden
@@ -116,7 +126,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
               <Button label="Apply" variant="primary" onClick={applyEdit} />
             </HStack>
           </VStack>
-          <VStack gap={3} width="18rem" isScrollable height="60dvh">
+          <VStack gap={3} isScrollable className="patch-editor__docs">
             {PARAM_DOCS.map((section) => (
               <VStack key={section.section} gap={2}>
                 <Text type="label">{section.section}</Text>

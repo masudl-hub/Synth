@@ -19,12 +19,16 @@ body {
 }
 
 .app {
-  --section-gap: var(--space-4, 16px);
+  --section-gap: var(--spacing-4);
+  /* The composer's resting height, and the room above it that it may grow into. */
+  --dock-h: calc(var(--size-element-md, 32px) + 2 * var(--spacing-1));
+  --composer-gap: calc(2 * var(--spacing-8));
   height: 100dvh;
   display: grid;
-  grid-template-rows: auto 1fr auto auto auto;
+  grid-template-rows: auto minmax(0, 1fr) auto calc(var(--composer-gap) + var(--dock-h)) auto;
+  overflow: hidden;
   gap: var(--section-gap);
-  padding: var(--space-4, 16px) var(--space-4, 16px) var(--space-3, 12px);
+  padding: var(--spacing-4) var(--spacing-4) var(--spacing-3);
   box-sizing: border-box;
   background: var(--color-background-body);
 }
@@ -75,30 +79,58 @@ body {
 
 .sim-tile__info {
   position: absolute;
-  top: var(--space-4, 16px);
-  left: var(--space-4, 16px);
+  top: var(--spacing-4);
+  left: var(--spacing-4);
   pointer-events: none;
 }
 
-/* Controls strip */
+/* Controls strip: always mounted, so switching mode never resizes the page */
 .strip {
   justify-self: center;
   width: min(56rem, 100%);
 }
 
-/* Dock */
-.dock {
-  justify-self: center;
-  width: min(56rem, 100%);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3, 12px);
-  margin-top: var(--space-16, 64px);
+.strip--hidden {
+  visibility: hidden;
 }
 
-.dock__main {
+.strip__now {
+  max-width: 100%;
+}
+
+.strip__name {
+  min-width: 0;
+  max-width: 32rem;
+}
+
+.strip__field {
+  width: 7rem;
+}
+
+/* Dock: a fixed-height row. The composer is pinned to its bottom edge and grows
+   upward into the gap above, so attachments, wrapping and mode changes never move the page. */
+.dock {
+  justify-self: center;
+  width: min(40rem, 100%);
+  height: var(--dock-h);
+  align-self: end;
+}
+
+.dock__slot {
+  position: relative;
   flex: 1;
   min-width: 0;
+  height: 100%;
+}
+
+.dock__float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
 }
 
 /* Library */
@@ -223,20 +255,151 @@ dialog.astryx-dialog {
   outline: none;
 }
 
-/* Composer: one pill, built from Astryx parts */
+/* Composer: a pill at rest, a rounded panel when it grows */
 .composer {
-  padding: var(--space-1, 4px) var(--space-2, 8px);
-  border-radius: 999px;
+  --tray-h: 0px;
+  box-sizing: border-box;
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: calc(var(--dock-h) / 2);
   background: var(--color-background-card-raised, #1c1c1e);
 }
+
+.composer:has(.composer__tray) {
+  --tray-h: calc(2.5rem + var(--spacing-2));
+  padding-top: var(--spacing-2);
+}
+
+.composer__tray {
+  height: 2.5rem;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.composer__thumb {
+  position: relative;
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.composer__thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-element, 8px);
+}
+
+.composer__thumb > button {
+  position: absolute;
+  top: var(--spacing-1);
+  right: var(--spacing-1);
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 0;
+  border-radius: var(--radius-full, 999px);
+}
+
 .composer__input {
   border: 0;
   background: transparent;
   box-shadow: none;
+  min-height: var(--size-element-md, 32px);
+}
+
+.composer__input textarea {
+  box-sizing: border-box;
+  resize: none;
+  --line: 1.25rem;
+  line-height: var(--line);
+  padding-block: calc((var(--size-element-md, 32px) - var(--line)) / 2);
+  min-height: var(--size-element-md, 32px);
+  /* One row at rest, growing by two more lines at most (less if a tray needs the gap), then it scrolls. */
+  max-height: min(
+    calc(var(--size-element-md, 32px) + 2 * var(--line)),
+    calc(var(--size-element-md, 32px) + var(--composer-gap) - var(--tray-h) - 2 * var(--spacing-1))
+  );
+  overflow-y: auto;
+}
+
+/* The placeholder stays on one line, so an empty composer is always one row. */
+.composer__input textarea:placeholder-shown {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app__toggle {
   position: absolute;
-  top: var(--space-4, 16px);
-  right: var(--space-4, 16px);
+  top: var(--spacing-4);
+  right: var(--spacing-4);
+}
+
+/* Patch editor dialog */
+.patch-editor__source {
+  flex: 1 1 32rem;
+  min-width: 0;
+}
+
+.patch-editor__docs {
+  flex: 0 0 18rem;
+  height: 60dvh;
+}
+
+/* Phones */
+@media (max-width: 40rem) {
+  .app {
+    --section-gap: var(--spacing-3);
+    --composer-gap: var(--spacing-12);
+    padding: var(--spacing-3) var(--spacing-3) var(--spacing-2);
+  }
+
+  .app__toggle {
+    top: var(--spacing-2);
+    right: var(--spacing-2);
+  }
+
+  /* Sliders share the width; actions stay at the end. */
+  .strip__controls {
+    width: 100%;
+    gap: var(--spacing-3);
+  }
+
+  .strip__sliders {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: var(--spacing-3);
+  }
+
+  .strip__slider {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .strip__field {
+    width: 100%;
+  }
+
+  .library {
+    grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  }
+
+  .patch-editor__docs {
+    flex-basis: 100%;
+    height: 30dvh;
+  }
+}
+
+/* Narrow carousels show a bigger centre tile, with neighbours peeking in */
+@container (max-width: 40rem) {
+  .sim-carousel__slot {
+    width: min(100cqh, 86cqw);
+  }
+}
+
+.sim-carousel {
+  touch-action: pan-y;
 }

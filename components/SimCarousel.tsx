@@ -14,6 +14,7 @@ const REACH = 2;
 const SCALES = [1, 0.74, 0.55];
 const SPACING = [0, 0.88, 1.5];
 const WHEEL_COOLDOWN_MS = 380;
+const SWIPE_MIN_PX = 40;
 
 /** Signed shortest distance from `active` to `index` around the loop. */
 const offsetOf = (index: number, active: number, count: number) => {
@@ -38,6 +39,28 @@ export const SimCarousel: React.FC<SimCarouselProps> = ({ audioDataRef, shouldTi
     step(delta > 0 ? 1 : -1);
   };
 
+  // Horizontal swipe on touch screens.
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== 'mouse') swipeStart.current = { x: e.clientX, y: e.clientY };
+  };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    if (!start) return;
+    const dx = e.clientX - start.x;
+    if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
+      swiped.current = true;
+      step(dx < 0 ? 1 : -1);
+    }
+  };
+  // A swipe that ends on a side tile must not also select it.
+  const swiped = useRef(false);
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (swiped.current) e.stopPropagation();
+    swiped.current = false;
+  };
+
   const rootRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -51,7 +74,8 @@ export const SimCarousel: React.FC<SimCarouselProps> = ({ audioDataRef, shouldTi
   }, [step]);
 
   return (
-    <div ref={rootRef} className="sim-carousel" onWheel={onWheel} role="group" aria-roledescription="carousel" aria-label="Simulations">
+    <div ref={rootRef} className="sim-carousel" onWheel={onWheel}
+      onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => { swipeStart.current = null; }} onClickCapture={onClickCapture} role="group" aria-roledescription="carousel" aria-label="Simulations">
       {simulations.map((sim, i) => {
         const offset = offsetOf(i, active, count);
         const distance = Math.abs(offset);
