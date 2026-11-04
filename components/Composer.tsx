@@ -14,6 +14,7 @@ import {
   IconArrowUp, IconMetronome, IconMicrophone, IconPaperclip, IconPlayerStopFilled, IconX,
 } from '@tabler/icons-react';
 import type { SynthPatch } from '../types';
+import { withPalette } from '../utils/palette';
 
 const ENDPOINT = '/api/theorem';
 const MAX_FILES = 2;
@@ -127,7 +128,7 @@ const ComposerBody: React.FC<ComposerProps & {
     resumed.current = true;
     if (resume.loop && loopKey) chat.optionChoices?.onChange(loopKey, resume.loop);
     lastSent.current = resume;
-    void chat.sendText(resume.text, { files: resume.files, voice: resume.voice });
+    void chat.sendText(withPalette(resume.text, resume.files.length + resume.voice.length > 0), { files: resume.files, voice: resume.voice });
   }, [resume, loopKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -152,8 +153,13 @@ const ComposerBody: React.FC<ComposerProps & {
 
   const send = () => {
     if (!hasContent || isStreaming) return;
-    lastSent.current = { text: chat.draftText, files: chat.pendingFiles, voice: chat.pendingVoice, loop: loopRef.current };
-    void chat.handleSubmit();
+    const sent = { text: chat.draftText, files: chat.pendingFiles, voice: chat.pendingVoice, loop: loopRef.current };
+    lastSent.current = sent;
+    // The draft goes out with a random palette hint, so open requests don't all land on the same sound.
+    chat.setDraftText('');
+    chat.setPendingFiles([]);
+    chat.setPendingVoice([]);
+    void chat.sendText(withPalette(sent.text, sent.files.length + sent.voice.length > 0), { files: sent.files, voice: sent.voice });
   };
 
   // Grow with the text; CSS caps the height to the gap above the dock, then it scrolls.
