@@ -131,6 +131,15 @@ body {
   align-items: center;
 }
 
+/* Errors sit centered just above the composer, whatever height it has grown to. */
+.composer__notice {
+  position: absolute;
+  bottom: calc(100% + var(--spacing-2));
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
 /* Holds the composer at full width (a bare flex child shrinks to its content) */
 .dock__slot {
   flex: 1;

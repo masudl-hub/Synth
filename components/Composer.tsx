@@ -187,9 +187,19 @@ const ComposerBody: React.FC<ComposerProps & {
     return () => el.removeEventListener('keydown', onKey);
   }, []);
 
-  const hasTray = chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0 || problems.length > 0;
+  const hasTray = chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0;
 
   return (
+    <>
+      {/* Above the composer and centered; it hangs off the top edge, so it never moves the page. */}
+      {problems.length > 0 && (
+        <VStack gap={0.5} align="center" className="composer__notice" role="alert">
+          {problems.map((message) => (
+            <Text key={message} type="supporting" size="xsm" align="center" maxLines={2} color="inherit"
+              style={{ color: 'var(--color-text-error)' }}>{message}</Text>
+          ))}
+        </VStack>
+      )}
     <VStack gap={2} width="100%" className="composer">
       {hasTray && (
         <HStack gap={2} align="center" className="composer__tray">
@@ -200,10 +210,6 @@ const ComposerBody: React.FC<ComposerProps & {
           {chat.pendingVoice.map((file) => (
             <Token key={file.name} size="sm" label="Voice note" icon={<IconMicrophone size={12} />}
               onRemove={() => chat.setPendingVoice([])} />
-          ))}
-          {problems.map((message) => (
-            <Text key={message} type="supporting" size="xsm" maxLines={2} color="inherit"
-              style={{ color: 'var(--color-text-error)' }}>{message}</Text>
           ))}
         </HStack>
       )}
@@ -256,6 +262,7 @@ const ComposerBody: React.FC<ComposerProps & {
         )}
       </HStack>
     </VStack>
+    </>
   );
 };
 
