@@ -25,9 +25,9 @@ export const Tile: React.FC<TileProps> = ({ sim, audioDataRef, shouldTimeAdvance
     <div className="sim-tile">
       <canvas
         ref={canvasRef}
-        onMouseMove={isFeatured ? handleMouseMove : undefined}
-        onMouseEnter={isFeatured ? handleMouseEnter : undefined}
-        onMouseLeave={isFeatured ? handleMouseLeave : undefined}
+        onMouseMove={handleMouseMove}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         style={{ cursor: isFeatured ? 'crosshair' : 'pointer' }}
       />
       {isFeatured && (

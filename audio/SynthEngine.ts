@@ -1,6 +1,9 @@
 
 import { AudioFeatures, SynthPatch } from '../types';
 import { FeatureExtractor, createAnalysers, silentFeatures } from './analysis';
+import { scheduleEnvelope } from './envelope';
+
+const SUB_MIN_HZ = 40;
 
 export class SynthEngine {
   private ctx: AudioContext;
@@ -70,8 +73,14 @@ export class SynthEngine {
     this.convolver.connect(this.reverbWet);
     this.reverbWet.connect(this.masterGain);
     
-    // Connect Chain
-    this.voiceOutput.connect(this.masterFilter);
+    // Connect Chain. A rumble filter first: tones under ~35 Hz are barely audible, but laptop and
+    // small speakers flutter on them (the 'blowing' sound), and they eat headroom.
+    const rumble = this.ctx.createBiquadFilter();
+    rumble.type = 'highpass';
+    rumble.frequency.value = 35;
+    rumble.Q.value = 0.707;
+    this.voiceOutput.connect(rumble);
+    rumble.connect(this.masterFilter);
     
     // Split from Filter
     this.masterFilter.connect(this.masterGain); // Dry signal
@@ -288,7 +297,8 @@ export class SynthEngine {
     } else {
         // Standard Subtractive / Layering
         // Bass usually wants a solid sub-oscillator
-        const ratio = type === 'bass' ? 0.5 : 1.0; 
+        // An octave-down sub only when it lands above ~40 Hz; lower it is a rumble, not a note.
+        const ratio = type === 'bass' && freq * 0.5 >= SUB_MIN_HZ ? 0.5 : 1.0;
         osc2.frequency.value = freq * ratio;
         
         // If FM amount is present on bass, add grit via detuned layer or subtle modulation
@@ -313,11 +323,7 @@ export class SynthEngine {
     
     // Gain Envelope
     const peakGain = 0.5 * Math.min(1, Math.max(0.1, Number(velocity) || 1));
-    env.gain.setValueAtTime(0, time);
-    env.gain.linearRampToValueAtTime(peakGain, time + effectiveAttack);
-    env.gain.exponentialRampToValueAtTime(Math.max(0.001, sustain * peakGain), time + effectiveAttack + decay);
-    env.gain.setValueAtTime(Math.max(0.001, sustain * peakGain), time + duration);
-    env.gain.exponentialRampToValueAtTime(0.001, time + duration + release);
+    scheduleEnvelope(env.gain, time, duration, { attack: effectiveAttack, decay, sustain, release }, peakGain);
 
     // Filter envelope: each note's cutoff starts `envAmount` octaves away and glides back to the set cutoff.
     if (sweep !== 0) {

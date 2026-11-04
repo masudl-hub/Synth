@@ -28,9 +28,12 @@ export const useCanvas = (
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
+    // Side tiles are drawn scaled down by CSS; map the pointer back to the canvas's own pixels.
+    const sx = rect.width ? canvasRef.current.offsetWidth / rect.width : 1;
+    const sy = rect.height ? canvasRef.current.offsetHeight / rect.height : 1;
     mouseRef.current = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: (e.clientX - rect.left) * sx,
+      y: (e.clientY - rect.top) * sy,
     };
   };
 
