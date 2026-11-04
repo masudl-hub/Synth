@@ -5,9 +5,10 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Text } from '@astryxdesign/core/Text';
+import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconBooks, IconCode, IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
+import { IconBooks, IconCode, IconPlayerPause, IconPlayerPlay, IconTriangle, IconWaveSawTool, IconWaveSine, IconWaveSquare } from '@tabler/icons-react';
 import { JsonEditor } from './JsonEditor';
 import { PARAM_DOCS } from './paramDocs';
 import { SynthPatch } from '../types';
@@ -19,6 +20,7 @@ interface ControlStripProps {
   bpm: number; updateBpm: (v: number) => void;
   volume: number; updateVolume: (v: number) => void;
   filterFreq: number; updateFilter: (v: number) => void;
+  onCycleOscillator: (type: OscillatorShape) => void;
   onOpenLibrary: () => void;
   onUpdatePatch: (patch: SynthPatch, playOnLoad: boolean) => void;
   /** Keeps the strip's space while hidden, so the page never moves. */
@@ -26,6 +28,15 @@ interface ControlStripProps {
   /** Changes when a new patch arrives; the strip eases in again. */
   arrival?: number;
 }
+
+// The wave shapes in the order the button steps through them; its icon is the shape a click switches to.
+type OscillatorShape = SynthPatch['oscillator']['type'];
+const SHAPES: { type: OscillatorShape; icon: React.ReactElement }[] = [
+  { type: 'sine', icon: <IconWaveSine /> },
+  { type: 'triangle', icon: <IconTriangle /> },
+  { type: 'sawtooth', icon: <IconWaveSawTool /> },
+  { type: 'square', icon: <IconWaveSquare /> },
+];
 
 // Descriptions can run long; keep the first ~45 characters, cut on a word, and show the rest on hover.
 const DESCRIPTION_MAX = 45;
@@ -43,7 +54,7 @@ const fromLog = (t: number) => FILTER_MIN * Math.pow(FILTER_MAX / FILTER_MIN, t)
 
 export const ControlStrip: React.FC<ControlStripProps> = ({
   currentPatch, isPlaying, onTogglePlay,
-  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onOpenLibrary, onUpdatePatch, isHidden = false, arrival = 0,
+  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onCycleOscillator, onOpenLibrary, onUpdatePatch, isHidden = false, arrival = 0,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [jsonCode, setJsonCode] = useState('');
@@ -64,6 +75,9 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
       setJsonError(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
+
+  const current = currentPatch?.oscillator.type ?? 'sine';
+  const next = SHAPES[(SHAPES.findIndex((s) => s.type === current) + 1) % SHAPES.length];
 
   const description = currentPatch?.description ?? '';
   const shortDescription = shorten(description);
@@ -95,6 +109,16 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
         </HStack>
         <HStack key={`controls-${arrival}`} gap={4} align="center" className={arrival ? 'strip__controls strip__arrive strip__arrive--late' : 'strip__controls'}>
           <HStack gap={4} align="center" className="strip__sliders">
+            <ToggleButton
+              label={`Wave: ${current}. Switch to ${next.type}`}
+              tooltip={`Wave: ${current}. Switch to ${next.type}`}
+              variant="ghost"
+              isIconOnly
+              icon={next.icon}
+              isPressed={false}
+              isDisabled={!currentPatch}
+              onPressedChange={() => onCycleOscillator(next.type)}
+            />
             <HStack gap={2} align="center" className="strip__slider">
               <Text type="supporting" size="xsm">BPM</Text>
               <Slider label="BPM" isLabelHidden containerClassName="strip__field" min={40} max={240} value={bpm} onChange={updateBpm} />

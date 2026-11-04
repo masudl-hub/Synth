@@ -108,6 +108,8 @@ export const useGenerativeAudio = () => {
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentPatch, setCurrentPatch] = useState<SynthPatch | null>(null);
+  // Bumped when a different patch is loaded or cleared, not when one of its knobs changes.
+  const [patchVersion, setPatchVersion] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   
   // Mixer State
@@ -207,6 +209,7 @@ export const useGenerativeAudio = () => {
 
   const loadPatch = useCallback(async (patch: SynthPatch, playOnLoad: boolean = true) => {
       setCurrentPatch(patch);
+      setPatchVersion((n) => n + 1);
       // Sync mixer controls to new patch defaults
       setBpm(patch.bpm);
       
@@ -243,6 +246,7 @@ export const useGenerativeAudio = () => {
   const clearPatch = () => {
     stopPlayback();
     setCurrentPatch(null);
+    setPatchVersion((n) => n + 1);
   };
 
   const toggleMute = () => {
@@ -264,6 +268,12 @@ export const useGenerativeAudio = () => {
       synthRef.current?.setVolume(val);
   };
   
+  // Swaps the wave shape in place. The patch version stays put, so the visuals aren't reset.
+  const updateOscillator = (type: SynthPatch['oscillator']['type']) => {
+      setCurrentPatch((p) => (p ? { ...p, oscillator: { ...p.oscillator, type } } : p));
+      synthRef.current?.setOscillatorType(type);
+  };
+
   const updateFilter = (val: number) => {
       setFilterFreq(val);
       synthRef.current?.setFilterFreq(val);
@@ -305,7 +315,7 @@ export const useGenerativeAudio = () => {
     // Mixer
     bpm, updateBpm,
     volume, updateVolume,
-    filterFreq, updateFilter,
+    filterFreq, updateFilter, updateOscillator, patchVersion,
     // Library
     savedPatches, saveCurrentPatch, deleteSavedPatch, loadPatch, PRESETS
   };

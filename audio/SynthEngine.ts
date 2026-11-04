@@ -117,6 +117,11 @@ export class SynthEngine {
       this.masterGain.gain.linearRampToValueAtTime(target, now + 0.1);
   }
 
+  /** Notes not yet played use the new shape; the ones sounding finish as they were. */
+  public setOscillatorType(type: SynthPatch['oscillator']['type']) {
+      if (this.currentPatch) this.currentPatch = { ...this.currentPatch, oscillator: { ...this.currentPatch.oscillator, type } };
+  }
+
   public setBPM(bpm: number) {
       if (this.currentPatch) {
           this.currentPatch.bpm = Math.max(20, Math.min(300, bpm));

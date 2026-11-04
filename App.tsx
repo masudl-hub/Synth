@@ -28,7 +28,7 @@ export default function App() {
 
   const {
     audioDataRef: synthAudioDataRef, loadGenerated, togglePlay, isPlaying, currentPatch,
-    bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter,
+    bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, updateOscillator, patchVersion,
     stopPlayback, clearPatch,
     savedPatches, saveCurrentPatch, deleteSavedPatch, loadPatch, PRESETS,
   } = useGenerativeAudio();
@@ -99,7 +99,7 @@ export default function App() {
           <Text type="supporting" size="xsm">Generative Audio Physics</Text>
         </VStack>
 
-        <SimCarousel audioDataRef={activeAudioRef} shouldTimeAdvance={shouldTimeAdvance} resetTrigger={currentPatch} />
+        <SimCarousel audioDataRef={activeAudioRef} shouldTimeAdvance={shouldTimeAdvance} resetTrigger={patchVersion} />
 
         <ControlStrip
           arrival={arrival}
@@ -110,6 +110,7 @@ export default function App() {
           bpm={bpm} updateBpm={updateBpm}
           volume={volume} updateVolume={updateVolume}
           filterFreq={filterFreq} updateFilter={updateFilter}
+          onCycleOscillator={updateOscillator}
           onOpenLibrary={() => setShowLibrary(true)}
           onUpdatePatch={loadPatch}
         />
