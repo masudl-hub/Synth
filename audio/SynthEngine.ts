@@ -34,7 +34,7 @@ export class SynthEngine {
   private scheduleAheadTime: number = 0.1; // s
 
   // Analysis State
-  private rafId: number | undefined;
+  private analysisTimer: number | undefined;
   public audioData: AudioFeatures;
 
   constructor() {
@@ -84,7 +84,7 @@ export class SynthEngine {
     this.masterGain.connect(this.ctx.destination);
     this.audioData = silentFeatures(this.ctx.sampleRate);
     
-    this.loopAnalysis();
+    this.analysisTimer = window.setInterval(this.loopAnalysis, 16);
   }
 
   public async resume() {
@@ -208,19 +208,19 @@ export class SynthEngine {
     const melody = this.currentPatch.melody || [];
     melody.forEach(note => {
       if (Math.floor(note.startStep) === step) {
-        this.triggerVoice(note.freq, time, note.durationSteps, 'melody');
+        this.triggerVoice(note.freq, time, note.durationSteps, 'melody', note.velocity);
       }
     });
 
     const bassline = this.currentPatch.bassline || [];
     bassline.forEach(note => {
       if (Math.floor(note.startStep) === step) {
-        this.triggerVoice(note.freq, time, note.durationSteps, 'bass');
+        this.triggerVoice(note.freq, time, note.durationSteps, 'bass', note.velocity);
       }
     });
   }
 
-  private triggerVoice(rawFreq: number, time: number, durationSteps: number, type: 'melody' | 'bass') {
+  private triggerVoice(rawFreq: number, time: number, durationSteps: number, type: 'melody' | 'bass', velocity = 1) {
     if (!this.currentPatch) return;
     
     const freq = Number(rawFreq);
@@ -250,6 +250,8 @@ export class SynthEngine {
     filter.type = (this.currentPatch.filter.type || 'lowpass').toLowerCase() as BiquadFilterType;
     filter.frequency.value = Number(this.currentPatch.filter.frequency) || 1000;
     filter.Q.value = Number(this.currentPatch.filter.q) || 1;
+    const cutoff = filter.frequency.value;
+    const sweep = Number(this.currentPatch.filter.envAmount) || 0;
     
     // Envelope
     const { attack, decay, sustain, release } = this.currentPatch.envelope;
@@ -260,7 +262,7 @@ export class SynthEngine {
     if (type === 'melody' && fmAmount > 0) {
         // True FM Synthesis
         // Osc2 modulates Osc1 frequency
-        osc2.frequency.value = freq * 2.0; // Harmonic ratio (can be varied)
+        osc2.frequency.value = freq * (Number(this.currentPatch.oscillator.fmRatio) || 2.0);
         
         const modGain = this.ctx.createGain();
         // FM Depth formula: modulationIndex * modulatorFrequency
@@ -310,12 +312,19 @@ export class SynthEngine {
     const duration = durationSteps * 0.25 * secondsPerBeat;
     
     // Gain Envelope
-    const peakGain = 0.5; 
+    const peakGain = 0.5 * Math.min(1, Math.max(0.1, Number(velocity) || 1));
     env.gain.setValueAtTime(0, time);
     env.gain.linearRampToValueAtTime(peakGain, time + effectiveAttack);
     env.gain.exponentialRampToValueAtTime(Math.max(0.001, sustain * peakGain), time + effectiveAttack + decay);
     env.gain.setValueAtTime(Math.max(0.001, sustain * peakGain), time + duration);
     env.gain.exponentialRampToValueAtTime(0.001, time + duration + release);
+
+    // Filter envelope: each note's cutoff starts `envAmount` octaves away and glides back to the set cutoff.
+    if (sweep !== 0) {
+      const from = Math.min(20000, Math.max(20, cutoff * Math.pow(2, sweep)));
+      filter.frequency.setValueAtTime(from, time);
+      filter.frequency.exponentialRampToValueAtTime(cutoff, time + effectiveAttack + Math.max(0.05, decay));
+    }
 
     filter.connect(env);
     env.connect(panner);
@@ -332,8 +341,8 @@ export class SynthEngine {
     }, (duration + release + 2) * 1000);
   }
 
+  // A timer, not requestAnimationFrame: frames stop in a hidden tab, and the tab icon still needs the signal.
   private loopAnalysis = () => {
     this.audioData = this.extractor.read();
-    this.rafId = requestAnimationFrame(this.loopAnalysis);
   }
 }

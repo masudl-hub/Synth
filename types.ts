@@ -51,6 +51,7 @@ export interface NoteEvent {
   freq: number;
   startStep: number; // 0-127 (16th notes, up to 8 bars)
   durationSteps: number;
+  velocity?: number; // 0.1 to 1: how hard the note is played; 1 (the default) is full level
 }
 
 export interface SynthPatch {
@@ -62,11 +63,13 @@ export interface SynthPatch {
     type: 'sine' | 'square' | 'sawtooth' | 'triangle';
     detune: number; // -100 to 100 cents
     fmAmount: number; // 0 to 100
+    fmRatio?: number; // 0.25 to 8: modulator frequency / note frequency; 2 (the default) is an octave above
   };
   filter: {
     frequency: number; // 20 to 20000
     q: number; // 0 to 20
     type: 'lowpass' | 'highpass' | 'bandpass';
+    envAmount?: number; // -4 to 4 octaves: each note's cutoff starts this far from `frequency` and glides back to it
   };
   envelope: {
     attack: number; // seconds

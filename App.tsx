@@ -1,10 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Theme } from '@astryxdesign/core/theme';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
+import { Link } from '@astryxdesign/core/Link';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
-import { IconMicrophone } from '@tabler/icons-react';
+import { IconButton } from '@astryxdesign/core/IconButton';
+import { HStack } from '@astryxdesign/core/HStack';
+import { IconDeviceAudioTape, IconMicrophone, IconRefresh } from '@tabler/icons-react';
 import { themes, defaultThemeSlug } from './astryx-themes';
 import { SimCarousel } from './components/SimCarousel';
 import { ControlStrip } from './components/ControlStrip';
@@ -26,10 +29,13 @@ export default function App() {
   const {
     audioDataRef: synthAudioDataRef, loadGenerated, togglePlay, isPlaying, currentPatch,
     bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter,
+    stopPlayback, clearPatch,
     savedPatches, saveCurrentPatch, deleteSavedPatch, loadPatch, PRESETS,
   } = useGenerativeAudio();
+  // Bumped by the refresh button; the composer starts a new thread.
+  const [thread, setThread] = useState(0);
 
-  const { audioDataRef: micAudioDataRef, startAudio: startMic, isAudioEnabled: isMicLive } = useAudioAnalyzer();
+  const { audioDataRef: micAudioDataRef, startAudio: startMic, stopAudio: stopMic, isAudioEnabled: isMicLive } = useAudioAnalyzer();
 
   const activeAudioRef = audioSource === 'synth' ? synthAudioDataRef : micAudioDataRef;
   useDynamicFavicon(activeAudioRef);
@@ -41,6 +47,20 @@ export default function App() {
     loadGenerated(raw);
     setArrival((n) => n + 1);
   }, [loadGenerated]);
+
+  // Switching sources stops the music and the mic, but keeps the patch and the thread.
+  const listen = (on: boolean) => {
+    stopPlayback();
+    setAudioSource(on ? 'mic' : 'synth');
+    if (on) void startMic(); else stopMic();
+  };
+
+  const startOver = () => {
+    clearPatch();
+    setStream(null);
+    setArrival(0);
+    setThread((n) => n + 1);
+  };
 
   const entries = useMemo<LibraryEntry[]>(() => [
     ...Object.values(PRESETS).map((patch) => ({ patch, savedIndex: null })),
@@ -56,15 +76,24 @@ export default function App() {
   return (
     <Theme theme={themes[defaultThemeSlug]} mode="dark">
       <main className="app">
-        <div className="app__toggle">
+        <HStack gap={1} align="center" className="app__toggle">
+          <IconButton
+            label="Start over"
+            tooltip="Start over: new thread, and the patch is cleared unless you saved it"
+            variant="ghost"
+            icon={<IconRefresh />}
+            onClick={startOver}
+          />
           <ToggleButton
-            label={audioSource === 'mic' ? 'Back to AI synth' : 'Use the microphone'}
+            label={audioSource === 'mic' ? 'Back to AI synth' : 'Listen with the microphone'}
+            tooltip={audioSource === 'mic' ? 'Back to AI synth' : 'Listen with the microphone'}
             icon={<IconMicrophone />}
+            pressedIcon={<IconDeviceAudioTape />}
             isIconOnly
             isPressed={audioSource === 'mic'}
-            onPressedChange={(on) => setAudioSource(on ? 'mic' : 'synth')}
+            onPressedChange={listen}
           />
-        </div>
+        </HStack>
         <VStack gap={0.5} align="center" className="app__header">
           <Text type="large" weight="semibold">cymatics lab</Text>
           <Text type="supporting" size="xsm">Generative Audio Physics</Text>
@@ -88,11 +117,11 @@ export default function App() {
         {/* Fixed height: the composer is pinned to its bottom and grows up into the gap, never pushing the page. */}
         <div className="dock">
           <div className="dock__float">
-            {audioSource === 'mic' ? (
-              <MicPanel isLive={isMicLive} onStart={startMic} />
-            ) : (
-              <Composer currentPatch={currentPatch} onPatch={onGenerated} onStream={setStream} />
-            )}
+            {/* Both stay mounted: the composer keeps its thread while the mic is on. */}
+            <div hidden={audioSource === 'mic'} className="dock__slot">
+              <Composer currentPatch={currentPatch} onPatch={onGenerated} onStream={setStream} thread={thread} />
+            </div>
+            {audioSource === 'mic' && <MicPanel isLive={isMicLive} onStart={startMic} />}
           </div>
         </div>
 
@@ -113,7 +142,8 @@ export default function App() {
         </Dialog>
 
         <VStack gap={0.5} align="center" className="footer">
-          <Text type="supporting" size="2xs">Formes inspirées des 36 formes vectorielles technologiques de Vanzyst | Built on Theorem</Text>
+          <Text type="supporting" size="2xs">Formes inspirées des 36 formes vectorielles technologiques de Vanzyst | Powered by{' '}
+            <Link href="https://theorem.masudlewis.com" target="_blank" className="footer__link">Theorem</Link></Text>
         </VStack>
       </main>
     </Theme>

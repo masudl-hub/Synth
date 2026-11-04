@@ -26,6 +26,14 @@ interface ControlStripProps {
   arrival?: number;
 }
 
+// Descriptions can run long; keep the first ~45 characters, cut on a word.
+const DESCRIPTION_MAX = 45;
+const shorten = (text: string) => {
+  if (text.length <= DESCRIPTION_MAX) return text;
+  const cut = text.slice(0, DESCRIPTION_MAX + 1);
+  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:\s]+$/, '');
+};
+
 // The filter cutoff sweeps by octaves, so the slider works on a log scale.
 const FILTER_MIN = 20;
 const FILTER_MAX = 20000;
@@ -72,7 +80,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
           />
           <VStack gap={0} className="strip__name">
             <Text type="label" maxLines={1}>{currentPatch?.name ?? 'No patch'}</Text>
-            <Text type="supporting" size="xsm" maxLines={1}>{currentPatch?.description ?? ''}</Text>
+            <Text type="supporting" size="xsm" maxLines={1}>{shorten(currentPatch?.description ?? '')}</Text>
           </VStack>
         </HStack>
         <HStack key={`controls-${arrival}`} gap={4} align="center" className={arrival ? 'strip__controls strip__arrive strip__arrive--late' : 'strip__controls'}>

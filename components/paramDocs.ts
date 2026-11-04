@@ -11,6 +11,7 @@ export const PARAM_DOCS = [
         items: [
             { key: "type", desc: "The character of the sound. Options: 'sine' (smooth/pure), 'triangle' (soft/hollow), 'square' (retro/gameboy), 'sawtooth' (sharp/buzzy)." },
             { key: "fmAmount", desc: "0 to 100. Frequency Modulation depth. 0 is clean. High values (50+) add metallic grit, bell-like tones, or noise." },
+            { key: "fmRatio", desc: "0.25 to 8. Modulator pitch as a multiple of the note. Whole numbers (1, 2, 3) are harmonic; 1.4 or 3.5 are bell-like and metallic; under 1 is hollow. Default 2." },
             { key: "detune", desc: "-50 to 50. Fine pitch offset in cents. Small amounts (5-10) make the sound thicker and warmer (analog feel)." }
         ]
     },
@@ -28,6 +29,7 @@ export const PARAM_DOCS = [
         items: [
             { key: "frequency", desc: "Cutoff (Hz). Controls brightness. Low (500) is muffled/dark, High (10000) is clear/sharp." },
             { key: "q", desc: "Resonance (0-20). Adds emphasis at the cutoff point. High values make it 'whistle' or sound squelchy (like a 303 bass)." },
+            { key: "envAmount", desc: "-4 to 4 octaves. Each note's cutoff starts this far from 'frequency' and glides back over the attack and decay. Positive plucks or 'wows', negative opens up from dark, 0 is steady." },
             { key: "type", desc: "'lowpass' (cuts highs), 'highpass' (cuts lows), 'bandpass' (isolates middle)." }
         ]
     },
@@ -44,6 +46,7 @@ export const PARAM_DOCS = [
             { key: "melody / bassline", desc: "Arrays of notes to play." },
             { key: "freq", desc: "Pitch in Hz. A4=440, C4=261.6, Low Bass=55 or 110." },
             { key: "startStep", desc: "When the note starts (0 to totalSteps-1)." },
+            { key: "velocity", desc: "0.1 to 1. How hard the note is played. 1 (default) is full level; accents near 1, ghost notes near 0.3." },
             { key: "durationSteps", desc: "How long the note holds in steps." }
         ]
     }

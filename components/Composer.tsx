@@ -11,30 +11,51 @@ import { attachmentIssueText } from '@theoremjs/agents';
 import { createHttpTransport } from '@theoremjs/react/client';
 import { useTheoremChat, useTheoremInterface } from '@theoremjs/react';
 import {
-  IconArrowUp, IconClockEdit, IconMicrophone, IconPaperclip, IconPlayerStopFilled, IconX,
+  IconArrowUp, IconMetronome, IconMicrophone, IconPaperclip, IconPlayerStopFilled, IconX,
 } from '@tabler/icons-react';
 import type { SynthPatch } from '../types';
 
 const ENDPOINT = '/api/theorem';
 const MAX_FILES = 2;
 
+/** A message the user sent that a lost or full thread never answered. */
+interface Unsent { text: string; files: File[]; voice: File[]; loop?: string }
+
+/** The host forgot the thread (a restart or deploy clears it) or it ran out of room. */
+const isThreadLost = (failure: { error: string; errorInternal?: string } | null) =>
+  !!failure && /no longer available|conversation is full|conversation_unknown|session\.full/i.test(`${failure.error} ${failure.errorInternal ?? ''}`);
+
 interface ComposerProps {
   currentPatch: SynthPatch | null;
   onPatch: (raw: unknown) => void;
+  /** Changes to start a fresh thread (the page's reset button). */
+  thread?: number;
   /** The JSON the model has written so far while a reply streams (empty before the first token); null otherwise. */
   onStream: (draft: string | null) => void;
 }
 
 /** The synth profile's composer, on one line, with no transcript: replies land as patches. */
-export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch, onStream }) => {
+export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch, onStream, thread: resetKey = 0 }) => {
   const transport = useMemo(() => createHttpTransport({ endpoint: ENDPOINT }), []);
   const described = useTheoremInterface(transport);
+  const [lost, setLost] = useState(0);
+  const resume = useRef<Unsent | null>(null);
+  // A reset from the page drops any message waiting to be re-sent.
+  useEffect(() => { resume.current = null; }, [resetKey]);
 
   if (described.status === 'error') {
     return <Banner status="error" title={described.failure.error} />;
   }
   if (described.status === 'loading' || described.iface.type === 'live') return null;
-  return <ComposerBody transport={transport} iface={described.iface} currentPatch={currentPatch} onPatch={onPatch} onStream={onStream} />;
+  // A new thread is a new chat: the patch rides along as context, so only the talk is dropped.
+  return (
+    <ComposerBody
+      key={`${resetKey}-${lost}`} transport={transport} iface={described.iface}
+      currentPatch={currentPatch} onPatch={onPatch} onStream={onStream}
+      resume={resume.current}
+      onNewThread={(unsent) => { resume.current = unsent ?? null; setLost((n) => n + 1); }}
+    />
+  );
 };
 
 /** Records one voice note; `stop` resolves to the audio as a File. */
@@ -71,9 +92,11 @@ function useVoiceNote(onNote: (file: File) => void) {
 }
 
 const ComposerBody: React.FC<ComposerProps & {
+  resume: Unsent | null;
+  onNewThread: (unsent?: Unsent) => void;
   transport: ReturnType<typeof createHttpTransport>;
   iface: Parameters<typeof useTheoremChat>[0]['iface'];
-}> = ({ transport, iface, currentPatch, onPatch, onStream }) => {
+}> = ({ transport, iface, currentPatch, onPatch, onStream, resume, onNewThread }) => {
   const chat = useTheoremChat({ transport, iface, context: currentPatch ?? undefined });
   const handled = useRef<unknown>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -90,6 +113,27 @@ const ComposerBody: React.FC<ComposerProps & {
 
   const isStreaming = chat.phase === 'streaming';
 
+  // The last message sent, kept so a lost thread can be replaced and the message sent again.
+  const lastSent = useRef<Unsent | null>(null);
+  const loopKey = Object.keys(chat.optionChoices?.declared ?? {})[0];
+  const loopValue = loopKey ? chat.optionChoices?.values[loopKey] : undefined;
+  const loopRef = useRef(loopValue);
+  loopRef.current = loopValue;
+
+  // A fresh thread picks up the message the old one dropped, with the same loop length.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!resume || resumed.current) return;
+    resumed.current = true;
+    if (resume.loop && loopKey) chat.optionChoices?.onChange(loopKey, resume.loop);
+    lastSent.current = resume;
+    void chat.sendText(resume.text, { files: resume.files, voice: resume.voice });
+  }, [resume, loopKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isThreadLost(chat.failure) && lastSent.current) onNewThread(lastSent.current);
+  }, [chat.failure]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Show what the model is writing while it writes.
   const draft = useMemo(() => {
     const live = [...chat.streamBlocks].reverse().find((b) => b.kind === 'structured');
@@ -102,11 +146,15 @@ const ComposerBody: React.FC<ComposerProps & {
     [string, { label?: string; choices: { value: string; description?: string }[] }] | undefined;
   const problems = [
     ...chat.issues.map((i) => attachmentIssueText(i, chat.iface?.labels)),
-    ...(chat.failure ? [chat.failure.error] : []),
+    ...(chat.failure && !isThreadLost(chat.failure) ? [chat.failure.error] : []),
     ...(voice.error ? [voice.error] : []),
   ];
 
-  const send = () => { if (hasContent && !isStreaming) void chat.handleSubmit(); };
+  const send = () => {
+    if (!hasContent || isStreaming) return;
+    lastSent.current = { text: chat.draftText, files: chat.pendingFiles, voice: chat.pendingVoice, loop: loopRef.current };
+    void chat.handleSubmit();
+  };
 
   // Grow with the text; CSS caps the height to the gap above the dock, then it scrolls.
   const textRef = useRef<HTMLTextAreaElement>(null);
@@ -170,10 +218,14 @@ const ComposerBody: React.FC<ComposerProps & {
         {loop && (
           <Selector
             label={loop[1].label ?? 'Loop length'} isLabelHidden variant="ghost" placement="above"
-            startIcon={<IconClockEdit size={14} />}
+            startIcon={<IconMetronome size={14} />}
             isDisabled={isStreaming} containerStyle={{ flex: 'none' }}
             value={chat.optionChoices?.values[loop[0]] ?? ''}
-            options={loop[1].choices.map((c) => ({ value: c.value, label: c.value, description: c.description }))}
+            options={[{
+              type: 'section',
+              title: 'Loop length',
+              options: loop[1].choices.map((c) => ({ value: c.value, label: `${Number(c.value) / 16} bars`, description: c.description })),
+            }]}
             onChange={(value) => chat.optionChoices?.onChange(loop[0], value)}
           />
         )}

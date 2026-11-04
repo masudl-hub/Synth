@@ -176,6 +176,9 @@ export const useGenerativeAudio = () => {
     };
   }, []);
 
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const velocityOf = (v: unknown) => (v == null || v === '' ? 1 : clamp(Number(v) || 1, 0.1, 1));
+
   const sanitizePatch = (patch: any): SynthPatch => {
       // Ensure numerical safety and required structure
       return {
@@ -186,12 +189,14 @@ export const useGenerativeAudio = () => {
           oscillator: {
               type: patch.oscillator?.type || 'sine',
               detune: Number(patch.oscillator?.detune) || 0,
-              fmAmount: Number(patch.oscillator?.fmAmount) || 0
+              fmAmount: Number(patch.oscillator?.fmAmount) || 0,
+              fmRatio: clamp(Number(patch.oscillator?.fmRatio) || 2, 0.25, 8)
           },
           filter: {
               type: patch.filter?.type || 'lowpass',
               frequency: Number(patch.filter?.frequency) || 2000,
-              q: Number(patch.filter?.q) || 1
+              q: Number(patch.filter?.q) || 1,
+              envAmount: clamp(Number(patch.filter?.envAmount) || 0, -4, 4)
           },
           envelope: {
               attack: Number(patch.envelope?.attack) || 0.01,
@@ -211,12 +216,14 @@ export const useGenerativeAudio = () => {
           melody: Array.isArray(patch.melody) ? patch.melody.map((n: any) => ({
               freq: Number(n.freq) || 440,
               startStep: Math.floor(Number(n.startStep) || 0),
-              durationSteps: Number(n.durationSteps) || 1
+              durationSteps: Number(n.durationSteps) || 1,
+              velocity: velocityOf(n.velocity)
           })) : [],
           bassline: Array.isArray(patch.bassline) ? patch.bassline.map((n: any) => ({
               freq: Number(n.freq) || 110,
               startStep: Math.floor(Number(n.startStep) || 0),
-              durationSteps: Number(n.durationSteps) || 1
+              durationSteps: Number(n.durationSteps) || 1,
+              velocity: velocityOf(n.velocity)
           })) : []
       };
   };
@@ -251,6 +258,17 @@ export const useGenerativeAudio = () => {
         synthRef.current.start();
         setIsPlaying(true);
     }
+  };
+
+  const stopPlayback = () => {
+    synthRef.current?.stop();
+    setIsPlaying(false);
+  };
+
+  // Back to the empty state; saved patches stay in the library.
+  const clearPatch = () => {
+    stopPlayback();
+    setCurrentPatch(null);
   };
 
   const toggleMute = () => {
@@ -304,6 +322,8 @@ export const useGenerativeAudio = () => {
     audioDataRef,
     loadGenerated,
     togglePlay,
+    stopPlayback,
+    clearPatch,
     toggleMute,
     isPlaying,
     isMuted,

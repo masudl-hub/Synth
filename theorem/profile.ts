@@ -10,6 +10,7 @@ const note = z.object({
   freq: z.number().describe("Frequency in Hz, never a note name."),
   startStep: z.number().int().min(0),
   durationSteps: z.number().int().min(1).max(8),
+  velocity: z.number().min(0.1).max(1).optional().describe("How hard the note is played, 0.1 to 1. Omit for full level."),
 });
 
 const patchSchema = z.object({
@@ -21,11 +22,13 @@ const patchSchema = z.object({
     type: z.enum(["sine", "square", "sawtooth", "triangle"]),
     detune: z.number(),
     fmAmount: z.number(),
+    fmRatio: z.number().min(0.25).max(8).optional().describe("Modulator frequency as a multiple of the note. 2 is the default."),
   }),
   filter: z.object({
     frequency: z.number(),
     q: z.number(),
     type: z.enum(["lowpass", "highpass", "bandpass"]),
+    envAmount: z.number().min(-4).max(4).optional().describe("Octaves each note's cutoff sweeps from before settling at 'frequency'."),
   }),
   envelope: z.object({
     attack: z.number(),
@@ -53,6 +56,9 @@ const SYSTEM = [
   "8. FM SYNTHESIS: Use 'fmAmount' aggressively (30-90) to create metallic, bell-like, or gritty textures.",
   "9. SCALES: Use exotic scales (Phrygian, Lydian, Dorian) or chromaticism. Avoid plain Major scales unless requested.",
   "10. DYNAMICS: Vary the envelope. Use short plucks, long swells, and percussive hits.",
+  "11. PHRASING: Give each note a 'velocity' (0.1-1). Accent downbeats, soften passing notes, leave some ghost notes near 0.3.",
+  "12. FILTER SWEEP: 'filter.envAmount' (-4 to 4 octaves) sweeps the cutoff on every note. Positive values pluck or wow; negative values open up from dark. Use 0 for a steady tone.",
+  "13. FM RATIO: 'oscillator.fmRatio' (0.25-8) sets the modulator pitch. Whole numbers (1, 2, 3, 4) sound harmonic and bright; 1.4, 3.5 or 5.19 sound inharmonic like bells and metal; below 1 is hollow and woody. Vary it with the mood instead of leaving it at 2.",
   "When a current patch is given as context, modify it to match the request. Keep what works and change what needs changing, unless the user asks to start from scratch.",
   "When an image is attached, translate its visual mood, texture, and composition into the patch.",
   "When audio is attached, describe the sound you hear and build a patch that matches it.",
