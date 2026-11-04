@@ -85,10 +85,10 @@ export default function App() {
             onClick={startOver}
           />
           <ToggleButton
-            label={audioSource === 'mic' ? 'Back to AI synth' : 'Listen with the microphone'}
-            tooltip={audioSource === 'mic' ? 'Back to AI synth' : 'Listen with the microphone'}
-            icon={<IconMicrophone />}
-            pressedIcon={<IconDeviceAudioTape />}
+            label={audioSource === 'mic' ? 'Listening with the microphone' : 'AI synth'}
+            tooltip={audioSource === 'mic' ? 'Microphone · click for AI synth' : 'AI synth · click to listen with the microphone'}
+            icon={<IconDeviceAudioTape />}
+            pressedIcon={<IconMicrophone />}
             isIconOnly
             isPressed={audioSource === 'mic'}
             onPressedChange={listen}
