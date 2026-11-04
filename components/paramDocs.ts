@@ -3,7 +3,7 @@ export const PARAM_DOCS = [
         section: "Global Settings", 
         items: [
             { key: "bpm", desc: "Tempo (Beats Per Minute). 60 is slow/chill, 120 is standard, 140+ is energetic." },
-            { key: "totalSteps", desc: "Total length of the loop in 16th notes. Standard is 32 (2 bars). Use 64 or 128 for longer, evolving chord progressions." }
+            { key: "totalSteps", desc: "Total length of the loop in 16th notes. Standard is 32 (2 bars). Use 64, 128, 256 or 512 for longer, evolving pieces." }
         ]
     },
     { 
@@ -12,6 +12,8 @@ export const PARAM_DOCS = [
             { key: "type", desc: "The character of the sound. Options: 'sine' (smooth/pure), 'triangle' (soft/hollow), 'square' (retro/gameboy), 'sawtooth' (sharp/buzzy)." },
             { key: "fmAmount", desc: "0 to 100. Frequency Modulation depth. 0 is clean. High values (50+) add metallic grit, bell-like tones, or noise." },
             { key: "fmRatio", desc: "0.25 to 8. Modulator pitch as a multiple of the note. Whole numbers (1, 2, 3) are harmonic; 1.4 or 3.5 are bell-like and metallic; under 1 is hollow. Default 2." },
+            { key: "fmWave", desc: "Shape of the FM modulator: 'sine' is clean and bell-like; omit it to follow the carrier's shape, which is grittier." },
+            { key: "layer", desc: "A second oscillator under every note: { type, octave (-2 to 2), detune, mix (0-1) }. A sine at octave -1 adds weight, a detuned saw adds thickness." },
             { key: "detune", desc: "-50 to 50. Fine pitch offset in cents. Small amounts (5-10) make the sound thicker and warmer (analog feel)." }
         ]
     },
@@ -34,10 +36,17 @@ export const PARAM_DOCS = [
         ]
     },
     { 
+        section: "Movement (LFO and Drums)",
+        items: [
+            { key: "lfo", desc: "A slow wobble on every note: { target: 'filter' | 'pitch' | 'amp', rate (0.05-20 Hz), depth (0-1) }. Filter sweeps, pitch is vibrato, amp is tremolo." },
+            { key: "drums", desc: "Percussion hits: { type: 'kick' | 'snare' | 'hat' | 'clap', startStep, velocity }. They share the same sixteenth-note grid as the notes." }
+        ]
+    },
+    {
         section: "Space (Effects)", 
         items: [
             { key: "delay", desc: "Echo effect. 'time' is seconds between repeats. 'feedback' (0-0.9) is how many repeats. 'mix' (0-1) is volume." },
-            { key: "reverb", desc: "Room simulation. 'decay' is room size (seconds). 'mix' (0-1) is wetness." }
+            { key: "reverb", desc: "Room simulation. 'decay' is room size (seconds). 'mix' (0-1) is wetness. 'tone' (0-1) is how bright the room is: 0 is dark and soft, 1 is a bright plate." }
         ]
     },
     { 

@@ -11,6 +11,8 @@ export const WEEKLY_PER_IP = 35;
 
 const PATCH_SCHEMA_ID = "synth.patch";
 
+const wave = z.enum(["sine", "square", "sawtooth", "triangle"]);
+
 const note = z.object({
   freq: z.number().describe("Frequency in Hz, never a note name."),
   startStep: z.number().int().min(0),
@@ -24,11 +26,28 @@ const patchSchema = z.object({
   bpm: z.number(),
   totalSteps: z.number().int(),
   oscillator: z.object({
-    type: z.enum(["sine", "square", "sawtooth", "triangle"]),
+    type: wave,
     detune: z.number(),
     fmAmount: z.number(),
     fmRatio: z.number().min(0.25).max(8).optional().describe("Modulator frequency as a multiple of the note. 2 is the default."),
+    fmWave: wave.optional().describe("Shape of the FM modulator. Sine is clean and bell-like. Omit to follow the carrier."),
+    layer: z.object({
+      type: wave,
+      octave: z.number().int().min(-2).max(2).describe("Octaves from the note: -1 is a sub, 1 is above."),
+      detune: z.number().min(-100).max(100),
+      mix: z.number().min(0).max(1),
+    }).optional().describe("A second oscillator played under every note."),
   }),
+  lfo: z.object({
+    target: z.enum(["filter", "pitch", "amp"]),
+    rate: z.number().min(0.05).max(20).describe("Hz. 0.1 to 0.5 is a slow drift, 4 to 7 a vibrato or wobble."),
+    depth: z.number().min(0).max(1),
+  }).optional().describe("A slow wobble applied to every note: the cutoff, the pitch (vibrato) or the level (tremolo)."),
+  drums: z.array(z.object({
+    type: z.enum(["kick", "snare", "hat", "clap"]),
+    startStep: z.number().int().min(0),
+    velocity: z.number().min(0.1).max(1).optional(),
+  })).optional().describe("Percussion hits on the same sixteenth-note grid as the notes."),
   filter: z.object({
     frequency: z.number(),
     q: z.number(),
@@ -42,7 +61,11 @@ const patchSchema = z.object({
     release: z.number(),
   }),
   delay: z.object({ time: z.number(), feedback: z.number(), mix: z.number() }).optional(),
-  reverb: z.object({ decay: z.number(), mix: z.number() }).optional(),
+  reverb: z.object({
+    decay: z.number(),
+    mix: z.number(),
+    tone: z.number().min(0).max(1).optional().describe("0 is a dark, soft room, 1 a bright plate. Omit for a warm room."),
+  }).optional(),
   melody: z.array(note),
   bassline: z.array(note),
 });
@@ -69,6 +92,11 @@ const SYSTEM = [
   "11. PHRASING: Give each note a 'velocity' (0.1-1). Accent downbeats, soften passing notes, leave some ghost notes near 0.3.",
   "12. FILTER SWEEP: 'filter.envAmount' (-4 to 4 octaves) sweeps the cutoff on every note. Positive values pluck or wow; negative values open up from dark. Use 0 for a steady tone.",
   "13. FM RATIO: 'oscillator.fmRatio' (0.25-8) sets the modulator pitch. Whole numbers (1, 2, 3, 4) sound harmonic and bright; 1.4, 3.5 or 5.19 sound inharmonic like bells and metal; below 1 is hollow and woody. Vary it with the mood instead of leaving it at 2.",
+  "14. FM WAVE: 'oscillator.fmWave' shapes the modulator. 'sine' gives clean bells and electric pianos; leave it out for the grittier default.",
+  "15. LAYER: 'oscillator.layer' adds a second oscillator under every note: a sine at octave -1 for weight, a detuned saw for thickness, a square at octave 1 for bite. Use it when the sound should be fuller.",
+  "16. LFO: 'lfo' wobbles every note. Target 'filter' for a slow sweep or wah, 'pitch' for vibrato, 'amp' for tremolo. Slow rates (0.1-0.5 Hz) drift; 4-7 Hz wobbles. Depth 0.1-0.3 is subtle. Leave it out for steady sounds.",
+  "17. DRUMS: 'drums' is an optional list of kick, snare, hat and clap hits on the same sixteenth-note grid as the notes. Use them when the request wants a beat, a pulse or energy. Leave them out for ambient or purely melodic music. Kick on the downbeats, snare or clap on the backbeat, hats for the subdivisions; vary the velocity.",
+  "18. REVERB TONE: 'reverb.tone' is 0 for a dark, soft room and 1 for a bright plate. Match the space to the mood.",
   "When a current patch is given as context, modify it to match the request. Keep what works and change what needs changing, unless the user asks to start from scratch.",
   "When an image is attached, translate its visual mood, texture, and composition into the patch.",
   "When audio is attached, describe the sound you hear and build a patch that matches it.",
@@ -77,6 +105,7 @@ const SYSTEM = [
   "when loop is 64: Create a long, evolving structure. Use A/B sections.",
   "when loop is 128: Create a long, evolving structure. Use A/B sections.",
   "when loop is 256: Create a long, evolving structure. Use A/B sections.",
+  "when loop is 512: Create a very long piece with several distinct sections that develop and return. Build it from a few phrases that repeat with variations, and make sure the melody and the bassline run the whole length with notes in every section, not only the start.",
 ];
 
 const gemini = registerProvider(geminiProvider, { keySlot: KEY_SLOT, fallbackKeySlot: FALLBACK_KEY_SLOT });
@@ -120,6 +149,7 @@ export const synthProfile = defineProfile({
           { value: "64", description: "Medium" },
           { value: "128", description: "Long" },
           { value: "256", description: "Extended" },
+          { value: "512", description: "Epic" },
         ],
       },
     },

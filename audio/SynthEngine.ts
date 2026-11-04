@@ -1,15 +1,18 @@
 
-import { AudioFeatures, SynthPatch } from '../types';
+import { AudioFeatures, DrumEvent, SynthPatch } from '../types';
 import { FeatureExtractor, createAnalysers, silentFeatures } from './analysis';
 import { scheduleEnvelope } from './envelope';
 
 const SUB_MIN_HZ = 40;
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 export class SynthEngine {
   private ctx: AudioContext;
   private extractor: FeatureExtractor;
   private masterGain: GainNode;
   private voiceOutput: GainNode;
+  private drumOutput: GainNode;
+  private noiseBuffer: AudioBuffer | undefined;
   
   // Master Effects
   private masterFilter: BiquadFilterNode;
@@ -49,6 +52,9 @@ export class SynthEngine {
     this.masterGain.gain.value = this.masterVolumeLevel;
     
     this.voiceOutput = this.ctx.createGain(); 
+    // Drums skip the master filter, so the sweep slider doesn't dull them, and send a little to the room.
+    this.drumOutput = this.ctx.createGain();
+    this.drumOutput.connect(this.masterGain);
     
     // Master Filter (for DJ sweeps)
     this.masterFilter = this.ctx.createBiquadFilter();
@@ -72,6 +78,10 @@ export class SynthEngine {
     
     this.convolver.connect(this.reverbWet);
     this.reverbWet.connect(this.masterGain);
+    const drumSend = this.ctx.createGain();
+    drumSend.gain.value = 0.2;
+    this.drumOutput.connect(drumSend);
+    drumSend.connect(this.convolver);
     
     // Connect Chain. A rumble filter first: tones under ~35 Hz are barely audible, but laptop and
     // small speakers flutter on them (the 'blowing' sound), and they eat headroom.
@@ -154,25 +164,32 @@ export class SynthEngine {
     // Apply Reverb Params
     if (patch.reverb) {
         this.reverbWet.gain.setTargetAtTime(patch.reverb.mix, now, 0.1);
-        const impulse = this.generateImpulse(2.0, patch.reverb.decay);
+        const impulse = this.generateImpulse(2.0, patch.reverb.decay, clamp(Number(patch.reverb.tone ?? 0.4), 0, 1));
         this.convolver.buffer = impulse;
     } else {
         this.reverbWet.gain.setTargetAtTime(0, now, 0.1);
     }
   }
 
-  private generateImpulse(duration: number, decay: number) {
+  /**
+   * A room's tail: independent noise per ear, so it has width, and low-passed more as it fades, the way
+   * air and walls soak up the highs. `tone` sets how bright it starts: 0 is a dark room, 1 a bright plate.
+   */
+  private generateImpulse(duration: number, decay: number, tone: number) {
       const sampleRate = this.ctx.sampleRate;
-      const length = sampleRate * duration;
+      const length = Math.floor(sampleRate * duration);
       const impulse = this.ctx.createBuffer(2, length, sampleRate);
-      const left = impulse.getChannelData(0);
-      const right = impulse.getChannelData(1);
-      
-      for (let i = 0; i < length; i++) {
-          const n = (Math.random() * 2 - 1);
-          const e = Math.pow(1 - i / length, decay);
-          left[i] = n * e;
-          right[i] = n * e;
+      const startHz = 2500 + tone * 13000;
+      for (let channel = 0; channel < 2; channel++) {
+          const data = impulse.getChannelData(channel);
+          let y = 0;
+          for (let i = 0; i < length; i++) {
+              const progress = i / length;
+              const cutoff = startHz * (1 - 0.85 * progress);
+              const a = 1 - Math.exp((-2 * Math.PI * cutoff) / sampleRate);
+              y += a * ((Math.random() * 2 - 1) - y);
+              data[i] = y * Math.pow(1 - progress, decay);
+          }
       }
       return impulse;
   }
@@ -226,6 +243,10 @@ export class SynthEngine {
       }
     });
 
+    (this.currentPatch.drums || []).forEach(hit => {
+      if (Math.floor(hit.startStep) === step) this.triggerDrum(hit, time);
+    });
+
     const bassline = this.currentPatch.bassline || [];
     bassline.forEach(note => {
       if (Math.floor(note.startStep) === step) {
@@ -277,6 +298,7 @@ export class SynthEngine {
         // True FM Synthesis
         // Osc2 modulates Osc1 frequency
         osc2.frequency.value = freq * (Number(this.currentPatch.oscillator.fmRatio) || 2.0);
+        if (this.currentPatch.oscillator.fmWave) osc2.type = this.currentPatch.oscillator.fmWave;
         
         const modGain = this.ctx.createGain();
         // FM Depth formula: modulationIndex * modulatorFrequency
@@ -337,19 +359,135 @@ export class SynthEngine {
       filter.frequency.exponentialRampToValueAtTime(cutoff, time + effectiveAttack + Math.max(0.05, decay));
     }
 
+    const end = time + duration + release + 0.1;
+    const extras: AudioNode[] = [];
+
+    // A second oscillator under the note, blended in by `mix`.
+    const layer = this.currentPatch.oscillator.layer;
+    if (layer && layer.mix > 0) {
+        const layerFreq = freq * Math.pow(2, Math.round(clamp(Number(layer.octave) || 0, -2, 2)));
+        if (layerFreq >= SUB_MIN_HZ && layerFreq < 12000) {
+            const layerOsc = this.ctx.createOscillator();
+            const layerGain = this.ctx.createGain();
+            layerOsc.type = layer.type;
+            layerOsc.frequency.value = layerFreq;
+            layerOsc.detune.value = Number(layer.detune) || 0;
+            layerGain.gain.value = clamp(Number(layer.mix), 0, 1) * 0.8;
+            layerOsc.connect(layerGain);
+            layerGain.connect(filter);
+            layerOsc.start(time);
+            layerOsc.stop(end);
+            extras.push(layerOsc, layerGain);
+        }
+    }
+
+    // A slow wobble that restarts with each note: on the cutoff, on the pitch, or on the level.
+    let tail: AudioNode = env;
+    const lfo = this.currentPatch.lfo;
+    if (lfo && lfo.depth > 0) {
+        const lfoOsc = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        const depth = clamp(Number(lfo.depth), 0, 1);
+        lfoOsc.frequency.value = clamp(Number(lfo.rate) || 1, 0.05, 20);
+        if (lfo.target === 'filter') {
+            lfoGain.gain.value = depth * 1200; // cents: up to an octave either way
+            lfoGain.connect(filter.detune);
+        } else if (lfo.target === 'pitch') {
+            lfoGain.gain.value = depth * 100; // cents: up to a semitone either way
+            lfoGain.connect(osc.detune);
+        } else {
+            const tremolo = this.ctx.createGain();
+            tremolo.gain.value = 1 - depth / 2;
+            lfoGain.gain.value = depth / 2;
+            lfoGain.connect(tremolo.gain);
+            env.connect(tremolo);
+            tail = tremolo;
+            extras.push(tremolo);
+        }
+        lfoOsc.connect(lfoGain);
+        lfoOsc.start(time);
+        lfoOsc.stop(end);
+        extras.push(lfoOsc, lfoGain);
+    }
+
     filter.connect(env);
-    env.connect(panner);
+    tail.connect(panner);
     panner.connect(this.voiceOutput);
 
     osc.start(time);
-    osc.stop(time + duration + release + 0.1);
+    osc.stop(end);
     
     setTimeout(() => {
         osc.disconnect();
         filter.disconnect();
         env.disconnect();
         panner.disconnect();
+        extras.forEach(node => node.disconnect());
     }, (duration + release + 2) * 1000);
+  }
+
+  private noise() {
+    if (!this.noiseBuffer) {
+      const length = this.ctx.sampleRate;
+      this.noiseBuffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+      const data = this.noiseBuffer.getChannelData(0);
+      for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    return this.noiseBuffer;
+  }
+
+  /** A burst of filtered noise that dies away over `decay` seconds. */
+  private noiseBurst(at: number, kind: BiquadFilterType, hz: number, q: number, peak: number, decay: number) {
+    const src = this.ctx.createBufferSource();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+    src.buffer = this.noise();
+    filter.type = kind;
+    filter.frequency.value = hz;
+    filter.Q.value = q;
+    gain.gain.setValueAtTime(peak, at);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + decay);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.drumOutput);
+    src.start(at, Math.random() * 0.5);
+    src.stop(at + decay + 0.02);
+    src.onended = () => { src.disconnect(); filter.disconnect(); gain.disconnect(); };
+  }
+
+  /** A pitched thump or snap that falls from `fromHz` to `toHz`. */
+  private tone(at: number, shape: OscillatorType, fromHz: number, toHz: number, sweep: number, peak: number, decay: number) {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = shape;
+    osc.frequency.setValueAtTime(fromHz, at);
+    osc.frequency.exponentialRampToValueAtTime(toHz, at + sweep);
+    gain.gain.setValueAtTime(peak, at);
+    gain.gain.exponentialRampToValueAtTime(0.001, at + decay);
+    osc.connect(gain);
+    gain.connect(this.drumOutput);
+    osc.start(at);
+    osc.stop(at + decay + 0.02);
+    osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+  }
+
+  private triggerDrum(hit: DrumEvent, time: number) {
+    const v = clamp(Number(hit.velocity) || 1, 0.1, 1);
+    switch (hit.type) {
+      case 'kick':
+        this.tone(time, 'sine', 150, 45, 0.12, 0.9 * v, 0.4);
+        break;
+      case 'snare':
+        this.noiseBurst(time, 'bandpass', 1800, 0.8, 0.5 * v, 0.18);
+        this.tone(time, 'triangle', 220, 170, 0.08, 0.35 * v, 0.1);
+        break;
+      case 'clap':
+        [0, 0.012, 0.024].forEach((offset, i) =>
+          this.noiseBurst(time + offset, 'bandpass', 1200, 1.2, 0.4 * v, i === 2 ? 0.16 : 0.02));
+        break;
+      default:
+        this.noiseBurst(time, 'highpass', 7500, 0.7, 0.3 * v, 0.05);
+    }
   }
 
   // A timer, not requestAnimationFrame: frames stop in a hidden tab, and the tab icon still needs the signal.

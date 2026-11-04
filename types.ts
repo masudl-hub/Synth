@@ -54,17 +54,29 @@ export interface NoteEvent {
   velocity?: number; // 0.1 to 1: how hard the note is played; 1 (the default) is full level
 }
 
+export type WaveShape = 'sine' | 'square' | 'sawtooth' | 'triangle';
+
+export interface DrumEvent {
+  type: 'kick' | 'snare' | 'hat' | 'clap';
+  startStep: number;
+  velocity?: number;
+}
+
 export interface SynthPatch {
   name: string;
   description: string;
   bpm: number;
   totalSteps?: number; // Length of the loop (e.g., 32, 64, 128)
   oscillator: {
-    type: 'sine' | 'square' | 'sawtooth' | 'triangle';
+    type: WaveShape;
     detune: number; // -100 to 100 cents
     fmAmount: number; // 0 to 100
     fmRatio?: number; // 0.25 to 8: modulator frequency / note frequency; 2 (the default) is an octave above
+    fmWave?: WaveShape; // the modulator's shape; sine is clean and bell-like. Omitted, it follows the carrier
+    layer?: { type: WaveShape; octave: number; detune: number; mix: number }; // a second oscillator under every note
   };
+  lfo?: { target: 'filter' | 'pitch' | 'amp'; rate: number; depth: number }; // a slow wobble on every note
+  drums?: DrumEvent[];
   filter: {
     frequency: number; // 20 to 20000
     q: number; // 0 to 20
@@ -85,6 +97,7 @@ export interface SynthPatch {
   reverb?: {
     decay: number; // seconds (0.1 - 5.0)
     mix: number; // 0.0 - 1.0
+    tone?: number; // 0 (dark and soft) to 1 (bright): how much of the highs the room keeps
   };
   melody: NoteEvent[];
   bassline: NoteEvent[];

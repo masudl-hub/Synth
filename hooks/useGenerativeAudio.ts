@@ -155,6 +155,8 @@ export const useGenerativeAudio = () => {
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   const velocityOf = (v: unknown) => (v == null || v === '' ? 1 : clamp(Number(v) || 1, 0.1, 1));
 
+  const WAVES = ['sine', 'square', 'sawtooth', 'triangle'];
+
   const sanitizePatch = (patch: any): SynthPatch => {
       // Ensure numerical safety and required structure
       return {
@@ -166,8 +168,25 @@ export const useGenerativeAudio = () => {
               type: patch.oscillator?.type || 'sine',
               detune: Number(patch.oscillator?.detune) || 0,
               fmAmount: Number(patch.oscillator?.fmAmount) || 0,
-              fmRatio: clamp(Number(patch.oscillator?.fmRatio) || 2, 0.25, 8)
+              fmRatio: clamp(Number(patch.oscillator?.fmRatio) || 2, 0.25, 8),
+              ...(WAVES.includes(patch.oscillator?.fmWave) ? { fmWave: patch.oscillator.fmWave } : {}),
+              ...(patch.oscillator?.layer ? { layer: {
+                  type: WAVES.includes(patch.oscillator.layer.type) ? patch.oscillator.layer.type : 'sine',
+                  octave: Math.round(clamp(Number(patch.oscillator.layer.octave) || 0, -2, 2)),
+                  detune: clamp(Number(patch.oscillator.layer.detune) || 0, -100, 100),
+                  mix: clamp(Number(patch.oscillator.layer.mix) || 0, 0, 1)
+              } } : {})
           },
+          ...(patch.lfo ? { lfo: {
+              target: ['filter', 'pitch', 'amp'].includes(patch.lfo.target) ? patch.lfo.target : 'filter',
+              rate: clamp(Number(patch.lfo.rate) || 1, 0.05, 20),
+              depth: clamp(Number(patch.lfo.depth) || 0, 0, 1)
+          } } : {}),
+          ...(Array.isArray(patch.drums) ? { drums: patch.drums.map((d: any) => ({
+              type: ['kick', 'snare', 'hat', 'clap'].includes(d.type) ? d.type : 'hat',
+              startStep: Math.floor(Number(d.startStep) || 0),
+              velocity: velocityOf(d.velocity)
+          })) } : {}),
           filter: {
               type: patch.filter?.type || 'lowpass',
               frequency: Number(patch.filter?.frequency) || 2000,
@@ -187,7 +206,8 @@ export const useGenerativeAudio = () => {
           },
           reverb: {
               decay: Number(patch.reverb?.decay) || 2.0,
-              mix: Number(patch.reverb?.mix) || 0
+              mix: Number(patch.reverb?.mix) || 0,
+              ...(patch.reverb?.tone !== undefined ? { tone: clamp(Number(patch.reverb.tone) || 0, 0, 1) } : {})
           },
           melody: Array.isArray(patch.melody) ? patch.melody.map((n: any) => ({
               freq: Number(n.freq) || 440,
