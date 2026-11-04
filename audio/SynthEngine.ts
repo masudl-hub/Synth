@@ -140,8 +140,8 @@ export class SynthEngine {
   private setWave(osc: OscillatorNode, shape: string) {
     const harmonics: Record<string, (n: number) => number> = {
       pulse: (n) => (2 / (n * Math.PI)) * Math.sin(n * Math.PI * 0.25),
-      organ: (n) => ({ 1: 1, 2: 0.7, 3: 0.5, 4: 0.35, 6: 0.2, 8: 0.15 } as Record<number, number>)[n] ?? 0,
-      bell: (n) => ({ 1: 1, 2: 0.55, 4: 0.45, 5: 0.2, 6: 0.3, 8: 0.15 } as Record<number, number>)[n] ?? 0,
+      organ: (n) => ({ 1: 1, 2: 1, 3: 0.8, 4: 0.8, 5: 0.5, 6: 0.5, 8: 0.4 } as Record<number, number>)[n] ?? 0,
+      bell: (n) => ({ 1: 1, 2: 0.25 } as Record<number, number>)[n] ?? 0,
     };
     const weight = harmonics[shape];
     if (!weight) { osc.type = shape as OscillatorType; return; }
@@ -386,6 +386,22 @@ export class SynthEngine {
 
     const end = time + duration + release + 0.1;
     const extras: AudioNode[] = [];
+
+    // A bell's strike: inharmonic partials that ring briefly above the note and die away faster the higher they sit.
+    if (oscType === ('bell' as string)) {
+        ([[2.76, 0.5, 0.9], [5.4, 0.3, 0.5], [8.93, 0.16, 0.28]] as const).forEach(([ratio, level, ring]) => {
+            const partial = this.ctx.createOscillator();
+            const partialGain = this.ctx.createGain();
+            partial.frequency.value = freq * ratio;
+            partialGain.gain.setValueAtTime(level * 0.6, time);
+            partialGain.gain.exponentialRampToValueAtTime(0.001, time + ring);
+            partial.connect(partialGain);
+            partialGain.connect(filter);
+            partial.start(time);
+            partial.stop(Math.min(end, time + ring + 0.05));
+            extras.push(partial, partialGain);
+        });
+    }
 
     // A second oscillator under the note, blended in by `mix`.
     const layer = this.currentPatch.oscillator.layer;
