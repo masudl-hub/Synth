@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
-import { IconTrash } from '@tabler/icons-react';
+import { IconCheck, IconPlus, IconTrash } from '@tabler/icons-react';
 import { SynthPatch } from '../types';
 
 export interface LibraryEntry {
@@ -12,6 +12,11 @@ export interface LibraryEntry {
 
 interface LibraryProps {
   entries: LibraryEntry[];
+  /** The patch the save card would add, or null when nothing is loaded. */
+  currentPatch: SynthPatch | null;
+  /** True when the current patch is already one of the entries. */
+  isCurrentSaved: boolean;
+  onSave: () => void;
   onLoad: (patch: SynthPatch) => void;
   onDelete: (savedIndex: number) => void;
 }
@@ -28,8 +33,25 @@ const WAVES: Record<Osc, string> = {
 };
 
 /** Patches as colourful cards: a live-drawn waveform, name, and loop length. */
-export const Library: React.FC<LibraryProps> = ({ entries, onLoad, onDelete }) => (
+export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurrentSaved, onSave, onLoad, onDelete }) => (
   <div className="library" role="list" aria-label="Patch library">
+    <div role="listitem" className="library__item" style={{ ['--i' as string]: 0 }}>
+      <button
+        className="library__card library__card--save"
+        onClick={onSave}
+        disabled={!currentPatch || isCurrentSaved}
+      >
+        <span className="library__save-icon" aria-hidden>
+          {isCurrentSaved ? <IconCheck size={20} /> : <IconPlus size={20} />}
+        </span>
+        <span className="library__name">
+          <Text type="label" maxLines={1}>{isCurrentSaved ? 'Saved' : 'Save current patch'}</Text>
+        </span>
+        <span className="library__chips">
+          <span className="library__chip">{currentPatch?.name ?? 'No patch loaded'}</span>
+        </span>
+      </button>
+    </div>
     {entries.map(({ patch, savedIndex }, i) => {
       const osc = patch.oscillator.type;
       return (
@@ -37,7 +59,7 @@ export const Library: React.FC<LibraryProps> = ({ entries, onLoad, onDelete }) =
           key={`${patch.name}-${i}`}
           role="listitem"
           className="library__item"
-          style={{ ['--i' as string]: i }}
+          style={{ ['--i' as string]: i + 1 }}
         >
           <button className="library__card" onClick={() => onLoad(patch)}>
             <svg className="library__wave" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden>

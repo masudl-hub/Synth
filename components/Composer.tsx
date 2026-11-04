@@ -11,7 +11,7 @@ import { attachmentIssueText } from '@theoremjs/agents';
 import { createHttpTransport } from '@theoremjs/react/client';
 import { useTheoremChat, useTheoremInterface } from '@theoremjs/react';
 import {
-  IconArrowUp, IconHourglassHigh, IconMicrophone, IconPaperclip, IconPlayerStopFilled, IconX,
+  IconArrowUp, IconClockEdit, IconMicrophone, IconPaperclip, IconPlayerStopFilled, IconX,
 } from '@tabler/icons-react';
 import type { SynthPatch } from '../types';
 
@@ -21,10 +21,12 @@ const MAX_FILES = 2;
 interface ComposerProps {
   currentPatch: SynthPatch | null;
   onPatch: (raw: unknown) => void;
+  /** The JSON the model has written so far while a reply streams (empty before the first token); null otherwise. */
+  onStream: (draft: string | null) => void;
 }
 
 /** The synth profile's composer, on one line, with no transcript: replies land as patches. */
-export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch }) => {
+export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch, onStream }) => {
   const transport = useMemo(() => createHttpTransport({ endpoint: ENDPOINT }), []);
   const described = useTheoremInterface(transport);
 
@@ -32,7 +34,7 @@ export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch }) => 
     return <Banner status="error" title={described.failure.error} />;
   }
   if (described.status === 'loading' || described.iface.type === 'live') return null;
-  return <ComposerBody transport={transport} iface={described.iface} currentPatch={currentPatch} onPatch={onPatch} />;
+  return <ComposerBody transport={transport} iface={described.iface} currentPatch={currentPatch} onPatch={onPatch} onStream={onStream} />;
 };
 
 /** Records one voice note; `stop` resolves to the audio as a File. */
@@ -71,7 +73,7 @@ function useVoiceNote(onNote: (file: File) => void) {
 const ComposerBody: React.FC<ComposerProps & {
   transport: ReturnType<typeof createHttpTransport>;
   iface: Parameters<typeof useTheoremChat>[0]['iface'];
-}> = ({ transport, iface, currentPatch, onPatch }) => {
+}> = ({ transport, iface, currentPatch, onPatch, onStream }) => {
   const chat = useTheoremChat({ transport, iface, context: currentPatch ?? undefined });
   const handled = useRef<unknown>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -87,6 +89,14 @@ const ComposerBody: React.FC<ComposerProps & {
   }, [chat.blocks, onPatch]);
 
   const isStreaming = chat.phase === 'streaming';
+
+  // Show what the model is writing while it writes.
+  const draft = useMemo(() => {
+    const live = [...chat.streamBlocks].reverse().find((b) => b.kind === 'structured');
+    return live && live.kind === 'structured' ? live.draft ?? '' : '';
+  }, [chat.streamBlocks]);
+  useEffect(() => { onStream(isStreaming ? draft : null); }, [isStreaming, draft, onStream]);
+  useEffect(() => () => onStream(null), [onStream]);
   const hasContent = chat.draftText.trim().length > 0 || chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0;
   const loop = Object.entries(chat.optionChoices?.declared ?? {})[0] as
     [string, { label?: string; choices: { value: string; description?: string }[] }] | undefined;
@@ -160,7 +170,7 @@ const ComposerBody: React.FC<ComposerProps & {
         {loop && (
           <Selector
             label={loop[1].label ?? 'Loop length'} isLabelHidden variant="ghost" placement="above"
-            startIcon={<IconHourglassHigh size={14} />}
+            startIcon={<IconClockEdit size={14} />}
             isDisabled={isStreaming} containerStyle={{ flex: 'none' }}
             value={chat.optionChoices?.values[loop[0]] ?? ''}
             options={loop[1].choices.map((c) => ({ value: c.value, label: c.value, description: c.description }))}

@@ -5,9 +5,9 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Text } from '@astryxdesign/core/Text';
-import { TextArea } from '@astryxdesign/core/TextArea';
 import { VStack } from '@astryxdesign/core/VStack';
-import { IconCheck, IconCode, IconDeviceFloppy, IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
+import { IconBooks, IconCode, IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
+import { JsonEditor } from './JsonEditor';
 import { PARAM_DOCS } from './paramDocs';
 import { SynthPatch } from '../types';
 
@@ -18,10 +18,12 @@ interface ControlStripProps {
   bpm: number; updateBpm: (v: number) => void;
   volume: number; updateVolume: (v: number) => void;
   filterFreq: number; updateFilter: (v: number) => void;
-  onSave: () => void;
+  onOpenLibrary: () => void;
   onUpdatePatch: (patch: SynthPatch, playOnLoad: boolean) => void;
   /** Keeps the strip's space while hidden, so the page never moves. */
   isHidden?: boolean;
+  /** Changes when a new patch arrives; the strip eases in again. */
+  arrival?: number;
 }
 
 // The filter cutoff sweeps by octaves, so the slider works on a log scale.
@@ -32,19 +34,11 @@ const fromLog = (t: number) => FILTER_MIN * Math.pow(FILTER_MAX / FILTER_MIN, t)
 
 export const ControlStrip: React.FC<ControlStripProps> = ({
   currentPatch, isPlaying, onTogglePlay,
-  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onSave, onUpdatePatch, isHidden = false,
+  bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, onOpenLibrary, onUpdatePatch, isHidden = false, arrival = 0,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [jsonCode, setJsonCode] = useState('');
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [justSaved, setJustSaved] = useState(false);
-
-  useEffect(() => {
-    if (!justSaved) return;
-    const id = setTimeout(() => setJustSaved(false), 1500);
-    return () => clearTimeout(id);
-  }, [justSaved]);
-
   useEffect(() => {
     if (isEditing && currentPatch) {
       setJsonCode(JSON.stringify(currentPatch, null, 2));
@@ -67,7 +61,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
       {/* Two fixed rows: what's playing, then how it sounds. The description is one truncated line,
           so the strip's height never depends on the patch. */}
       <VStack gap={3} align="center" className={isHidden ? 'strip strip--hidden' : 'strip'}>
-        <HStack gap={3} align="center" className="strip__now">
+        <HStack key={`now-${arrival}`} gap={3} align="center" className={arrival ? 'strip__now strip__arrive' : 'strip__now'}>
           <IconButton
             label={isPlaying ? 'Pause' : 'Play'}
             tooltip={isPlaying ? 'Pause' : 'Play'}
@@ -81,7 +75,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
             <Text type="supporting" size="xsm" maxLines={1}>{currentPatch?.description ?? ''}</Text>
           </VStack>
         </HStack>
-        <HStack gap={4} align="center" className="strip__controls">
+        <HStack key={`controls-${arrival}`} gap={4} align="center" className={arrival ? 'strip__controls strip__arrive strip__arrive--late' : 'strip__controls'}>
           <HStack gap={4} align="center" className="strip__sliders">
             <HStack gap={2} align="center" className="strip__slider">
               <Text type="supporting" size="xsm">BPM</Text>
@@ -100,27 +94,19 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
             </HStack>
           </HStack>
           <HStack gap={1} align="center">
-            <IconButton label={justSaved ? 'Saved' : 'Save to library'} tooltip={justSaved ? 'Saved' : 'Save to library'}
-              variant="ghost" icon={justSaved ? <IconCheck /> : <IconDeviceFloppy />}
-              isDisabled={!currentPatch} onClick={() => { onSave(); setJustSaved(true); }} />
+            <IconButton label="Library" tooltip="Library" variant="ghost" icon={<IconBooks />} onClick={onOpenLibrary} />
             <IconButton label="Edit patch JSON" tooltip="Edit patch JSON" variant="ghost" icon={<IconCode />}
               isDisabled={!currentPatch} onClick={() => setIsEditing(true)} />
           </HStack>
         </HStack>
       </VStack>
 
-      <Dialog isOpen={isEditing} onOpenChange={setIsEditing} width="min(72rem, 94vw)" purpose="form">
+      <Dialog isOpen={isEditing} onOpenChange={setIsEditing} width="min(50rem, 94vw)" purpose="form">
         <DialogHeader title="Patch source" onOpenChange={setIsEditing} />
         <HStack gap={4} align="start" padding={4} wrap="wrap" className="patch-editor">
           <VStack gap={2} className="patch-editor__source">
-            <TextArea
-              label="Patch JSON"
-              isLabelHidden
-              value={jsonCode}
-              onChange={setJsonCode}
-              rows={24}
-              status={jsonError ? { type: 'error', message: jsonError } : undefined}
-            />
+            <JsonEditor label="Patch JSON" value={jsonCode} onChange={setJsonCode} />
+            {jsonError && <Text type="supporting" size="xsm" style={{ color: 'var(--color-text-error)' }}>{jsonError}</Text>}
             <HStack gap={2} justify="end">
               <Button label="Cancel" variant="ghost" onClick={() => setIsEditing(false)} />
               <Button label="Apply" variant="primary" onClick={applyEdit} />
@@ -132,7 +118,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
                 <Text type="label">{section.section}</Text>
                 {section.items.map((item) => (
                   <VStack key={item.key} gap={0.5}>
-                    <Text type="code">{item.key}</Text>
+                    <Text type="label">{item.key}</Text>
                     <Text type="supporting" size="xsm">{item.desc}</Text>
                   </VStack>
                 ))}

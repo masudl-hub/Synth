@@ -224,8 +224,8 @@ export const useGenerativeAudio = () => {
       };
   };
 
-  /** Loads a patch a Theorem turn returned, after clamping it to what the engine accepts. */
-  const loadGenerated = (raw: unknown) => loadPatch(sanitizePatch(raw), false);
+  /** Loads a patch a Theorem turn returned, after clamping it to what the engine accepts, and plays it. */
+  const loadGenerated = (raw: unknown) => loadPatch(sanitizePatch(raw), true);
 
   const loadPatch = useCallback(async (patch: SynthPatch, playOnLoad: boolean = true) => {
       setCurrentPatch(patch);

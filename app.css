@@ -2,8 +2,11 @@
 [data-astryx-theme] {
   --font-family-body: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-family-heading: var(--font-family-body);
-  --color-background-body: #0a0a0b;
-  --color-background-card: #0a0a0b;
+  --font-family-code: var(--font-family-body);
+  --font-family-mono: var(--font-family-body);
+  --color-background-body: #131313;
+  --color-background-card: #131313;
+  --color-background-card-raised: #212121;
 }
 
 html,
@@ -114,14 +117,9 @@ body {
   width: min(40rem, 100%);
   height: var(--dock-h);
   align-self: end;
+  position: relative;
 }
 
-.dock__slot {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  height: 100%;
-}
 
 .dock__float {
   position: absolute;
@@ -172,6 +170,31 @@ body {
 }
 
 .library__card:active { transform: scale(0.98); }
+
+/* The save card: a dashed placeholder for the patch that's playing */
+.library__card--save {
+  border-style: dashed;
+  background: transparent;
+}
+
+.library__card--save:disabled {
+  cursor: default;
+  transform: none;
+  opacity: 0.6;
+  border-color: var(--color-border);
+}
+
+.library__save-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  color: var(--color-text-secondary, #a1a1aa);
+}
+
+.library__card--save:not(:disabled):hover .library__save-icon {
+  color: var(--color-text-primary, #fafafa);
+}
 
 .library__card:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -335,15 +358,27 @@ dialog.astryx-dialog {
   right: var(--spacing-4);
 }
 
-/* Patch editor dialog */
+/* Patch editor dialog: the JSON and its docs share one height, so the buttons never fall off the bottom. */
+.patch-editor {
+  --editor-h: min(55dvh, 30rem);
+}
+
 .patch-editor__source {
-  flex: 1 1 32rem;
+  flex: 1 1 24rem;
   min-width: 0;
+  height: calc(var(--editor-h) + var(--size-element-md, 32px) + var(--spacing-2));
+}
+
+.patch-editor__source .json {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .patch-editor__docs {
-  flex: 0 0 18rem;
-  height: 60dvh;
+  flex: 0 0 15rem;
+  height: calc(var(--editor-h) + var(--size-element-md, 32px) + var(--spacing-2));
 }
 
 /* Phones */
@@ -389,7 +424,11 @@ dialog.astryx-dialog {
 
   .patch-editor__docs {
     flex-basis: 100%;
-    height: 30dvh;
+    height: 24dvh;
+  }
+
+  .patch-editor__source {
+    height: calc(36dvh + var(--size-element-md, 32px) + var(--spacing-2));
   }
 }
 
@@ -403,3 +442,139 @@ dialog.astryx-dialog {
 .sim-carousel {
   touch-action: pan-y;
 }
+
+/* Stream readout: the reply as it is written, faint, fixed at the bottom right. */
+.stream {
+  position: fixed;
+  right: var(--spacing-4);
+  bottom: var(--spacing-4);
+  width: min(24rem, 40vw);
+  height: 40dvh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms ease;
+  -webkit-mask-image: linear-gradient(to top, #000 55%, transparent);
+  mask-image: linear-gradient(to top, #000 55%, transparent);
+}
+
+.stream[data-live="true"] {
+  opacity: 0.32;
+}
+
+.stream__text {
+  margin: 0;
+  width: 100%;
+  font-family: var(--font-family-body);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--color-text-secondary, #a1a1aa);
+}
+
+.stream__caret {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: currentColor;
+  animation: stream-blink 1s steps(2, start) infinite;
+}
+
+@keyframes stream-blink { to { visibility: hidden; } }
+
+/* A new patch eases in: name first, then the controls. */
+.strip__arrive {
+  animation: strip-arrive 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.strip__arrive--late {
+  animation-delay: 120ms;
+}
+
+@keyframes strip-arrive {
+  from { opacity: 0; transform: translateY(10px); }
+}
+
+/* On phones there is no free corner at the bottom, so it floats faintly over the top of the carousel. */
+@media (max-width: 40rem) {
+  .stream {
+    width: 62vw;
+    height: 22dvh;
+    top: 4.5rem;
+    bottom: auto;
+  }
+
+  .stream[data-live="true"] {
+    opacity: 0.26;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strip__arrive, .stream__caret { animation: none; }
+  .stream { transition: none; }
+}
+
+/* JSON editor: the textarea's text is transparent; the painted copy underneath carries the colour. */
+.json {
+  --json-line: 1.5rem;
+  --json-pad: var(--spacing-3);
+  position: relative;
+  height: calc(var(--rows, 24) * var(--json-line) + 2 * var(--json-pad));
+  max-height: 60dvh;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-element, 8px);
+  background: var(--color-background-card-raised, #212121);
+  font-family: var(--font-family-body);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.json:focus-within {
+  border-color: var(--color-text-secondary, #a1a1aa);
+}
+
+.json__paint,
+.json__input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  box-sizing: border-box;
+  padding: var(--json-pad);
+  border: 0;
+  font: inherit;
+  line-height: var(--json-line);
+  letter-spacing: normal;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.json__paint {
+  pointer-events: none;
+  color: var(--color-text-primary, #fafafa);
+  scrollbar-width: none;
+}
+
+.json__input {
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--color-text-primary, #fafafa);
+  outline: none;
+}
+
+.json__input::selection {
+  background: color-mix(in srgb, var(--color-text-primary, #fafafa) 22%, transparent);
+}
+
+.json__key { color: var(--color-text-primary, #fafafa); }
+.json__str { color: #9fd4a3; }
+.json__num { color: #e6b673; }
+.json__lit { color: #c4a7e7; }
+.json__punct { color: var(--color-text-secondary, #8a8a93); }
+.json__comment { color: var(--color-text-secondary, #8a8a93); font-style: italic; }

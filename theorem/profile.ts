@@ -73,7 +73,10 @@ export const synthProfile = defineProfile({
   identity: { handle: "synth", system: SYSTEM },
   models: {
     main: {
-      ...gemini.model("geminiInteractions", "gemini-3.5-flash-lite"),
+      // Google stores each interaction; the next turn sends its id and only the new input.
+      ...gemini.model("geminiInteractions", "gemini-3.5-flash-lite", {
+        options: { store: true, persistViaInteractionId: true },
+      }),
       efforts: { think: "low" },
       defaultEffort: "think",
     },
@@ -86,8 +89,8 @@ export const synthProfile = defineProfile({
     attachments: { accept: ["image/*"] },
     voice: { accept: ["audio/*"] },
     maxFiles: 2,
-    maxBytes: 8_000_000,
-    maxTurnBytes: 16_000_000,
+    maxBytes: 12_000_000,
+    maxTurnBytes: 20_000_000,
     context: { from: ["client"], maxChars: 40_000 },
     options: {
       loop: {

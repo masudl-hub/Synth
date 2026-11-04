@@ -17,7 +17,7 @@ const drawEquationOverlay = (
   const padding = 12;
   
   // Text Config
-  ctx.font = '10px "Space Grotesk", monospace';
+  ctx.font = '10px Geist, sans-serif';
   ctx.textBaseline = 'middle';
   
   // Draw Equation (Left)
@@ -875,7 +875,7 @@ const drawTonnetz = ({ ctx, width, height, time, mouse, audio }: SimulationConte
     
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '10px "Space Grotesk"';
+    ctx.font = '10px Geist, sans-serif';
     
     const drawNode = (i: number, j: number) => {
         // Hexagonal coordinates
