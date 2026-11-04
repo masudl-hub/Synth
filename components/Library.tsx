@@ -33,6 +33,12 @@ const WAVES: Record<Osc, string> = {
 };
 
 /** Patches as colourful cards: a live-drawn waveform, name, and loop length. */
+/** Steps are sixteenth notes, so sixteen make a bar. */
+const barsLabel = (steps: number) => {
+  const bars = Math.round((steps / 16) * 10) / 10;
+  return `${bars} ${bars === 1 ? 'bar' : 'bars'}`;
+};
+
 export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurrentSaved, onSave, onLoad, onDelete }) => (
   <div className="library" role="list" aria-label="Patch library">
     <div role="listitem" className="library__item" style={{ ['--i' as string]: 0 }}>
@@ -71,7 +77,7 @@ export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurre
             </span>
             <span className="library__chips">
               <span className="library__chip">{osc}</span>
-              <span className="library__chip">{patch.totalSteps ?? 32} steps</span>
+              <span className="library__chip">{barsLabel(patch.totalSteps ?? 32)}</span>
               {savedIndex !== null && <span className="library__chip library__chip--mine">saved</span>}
             </span>
           </button>

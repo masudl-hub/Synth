@@ -3,10 +3,12 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { SynthEngine } from '../audio/SynthEngine';
 import { AudioFeatures, SynthPatch, NoteEvent } from '../types';
 import { silentFeatures } from '../audio/analysis';
+import { PORCELAIN_BEATS } from '../audio/porcelainBeats';
 import { DEFAULT_PATCH } from '../audio/defaultPatch';
 
 
 const PRESETS: Record<string, SynthPatch> = {
+    "Porcelain": PORCELAIN_BEATS,
     "Sonic": {
         name: "Sonic Run",
         description: "Fast, 8-bit inspired square waves",
