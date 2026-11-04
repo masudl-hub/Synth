@@ -28,7 +28,7 @@ export default function App() {
 
   const {
     audioDataRef: synthAudioDataRef, loadGenerated, togglePlay, isPlaying, currentPatch,
-    bpm, updateBpm, filterFreq, updateFilter, updateOscillator, patchVersion,
+    bpm, updateBpm, volume, updateVolume, filterFreq, updateFilter, updateOscillator, patchVersion,
     stopPlayback, clearPatch,
     savedPatches, saveCurrentPatch, deleteSavedPatch, loadPatch, PRESETS,
   } = useGenerativeAudio();
@@ -108,6 +108,7 @@ export default function App() {
           isPlaying={isPlaying}
           onTogglePlay={togglePlay}
           bpm={bpm} updateBpm={updateBpm}
+          volume={volume} updateVolume={updateVolume}
           filterFreq={filterFreq} updateFilter={updateFilter}
           onCycleOscillator={updateOscillator}
           onOpenLibrary={() => setShowLibrary(true)}
