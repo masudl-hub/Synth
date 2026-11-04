@@ -76,6 +76,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
     }
   };
 
+  const cap = (word: string) => word[0].toUpperCase() + word.slice(1);
   const current = currentPatch?.oscillator.type ?? 'sine';
   const next = SHAPES[(SHAPES.findIndex((s) => s.type === current) + 1) % SHAPES.length];
 
@@ -110,8 +111,8 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
         <HStack key={`controls-${arrival}`} gap={4} align="center" className={arrival ? 'strip__controls strip__arrive strip__arrive--late' : 'strip__controls'}>
           <HStack gap={4} align="center" className="strip__sliders">
             <ToggleButton
-              label={`Wave: ${current}. Click for ${next.type}`}
-              tooltip={`Wave: ${current}. Click for ${next.type}`}
+              label={`Oscillator wave, currently ${current}`}
+              tooltip={`${cap(current)} · click for ${next.type}`}
               variant="ghost"
               isIconOnly
               icon={SHAPES.find((s) => s.type === current)?.icon ?? SHAPES[0].icon}
