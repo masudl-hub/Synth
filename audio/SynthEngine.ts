@@ -52,8 +52,10 @@ export class SynthEngine {
     this.masterGain.gain.value = this.masterVolumeLevel;
     
     this.voiceOutput = this.ctx.createGain(); 
-    // Drums skip the master filter, so the sweep slider doesn't dull them, and send a little to the room.
+    // Drums skip the master filter, so the sweep slider doesn't dull them, but they share the music's
+    // room and echo (wired below), so they sit in the same space instead of in front of it.
     this.drumOutput = this.ctx.createGain();
+    this.drumOutput.gain.value = 0.7;
     this.drumOutput.connect(this.masterGain);
     
     // Master Filter (for DJ sweeps)
@@ -78,10 +80,14 @@ export class SynthEngine {
     
     this.convolver.connect(this.reverbWet);
     this.reverbWet.connect(this.masterGain);
-    const drumSend = this.ctx.createGain();
-    drumSend.gain.value = 0.2;
-    this.drumOutput.connect(drumSend);
-    drumSend.connect(this.convolver);
+    const drumRoom = this.ctx.createGain();
+    drumRoom.gain.value = 0.7;
+    this.drumOutput.connect(drumRoom);
+    drumRoom.connect(this.convolver);
+    const drumEcho = this.ctx.createGain();
+    drumEcho.gain.value = 0.3;
+    this.drumOutput.connect(drumEcho);
+    drumEcho.connect(this.delayNode);
     
     // Connect Chain. A rumble filter first: tones under ~35 Hz are barely audible, but laptop and
     // small speakers flutter on them (the 'blowing' sound), and they eat headroom.
