@@ -3,34 +3,8 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { SynthEngine } from '../audio/SynthEngine';
 import { AudioFeatures, SynthPatch, NoteEvent } from '../types';
 import { silentFeatures } from '../audio/analysis';
+import { DEFAULT_PATCH } from '../audio/defaultPatch';
 
-const DEFAULT_PATCH: SynthPatch = {
-    name: "Atmospheric Pulse",
-    description: "A simple starter patch with space",
-    bpm: 120,
-    totalSteps: 32,
-    oscillator: { type: "sine", detune: 0, fmAmount: 10 },
-    filter: { type: "lowpass", frequency: 2000, q: 1 },
-    envelope: { attack: 0.01, decay: 0.1, sustain: 0.3, release: 0.1 },
-    delay: { time: 0.375, feedback: 0.4, mix: 0.3 },
-    reverb: { decay: 2.0, mix: 0.25 },
-    melody: [
-        { freq: 440, startStep: 0, durationSteps: 2 },
-        { freq: 554, startStep: 4, durationSteps: 2 },
-        { freq: 659, startStep: 8, durationSteps: 2 },
-        { freq: 880, startStep: 12, durationSteps: 2 },
-        { freq: 659, startStep: 16, durationSteps: 2 },
-        { freq: 554, startStep: 20, durationSteps: 2 },
-        { freq: 440, startStep: 24, durationSteps: 2 },
-        { freq: 330, startStep: 28, durationSteps: 2 },
-    ],
-    bassline: [
-        { freq: 110, startStep: 0, durationSteps: 4 },
-        { freq: 110, startStep: 8, durationSteps: 4 },
-        { freq: 165, startStep: 16, durationSteps: 4 },
-        { freq: 146, startStep: 24, durationSteps: 4 },
-    ]
-};
 
 const PRESETS: Record<string, SynthPatch> = {
     "Sonic": {

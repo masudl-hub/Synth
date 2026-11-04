@@ -5,6 +5,7 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Slider } from '@astryxdesign/core/Slider';
 import { Text } from '@astryxdesign/core/Text';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconBooks, IconCode, IconPlayerPause, IconPlayerPlay } from '@tabler/icons-react';
 import { JsonEditor } from './JsonEditor';
@@ -26,12 +27,12 @@ interface ControlStripProps {
   arrival?: number;
 }
 
-// Descriptions can run long; keep the first ~45 characters, cut on a word.
+// Descriptions can run long; keep the first ~45 characters, cut on a word, and show the rest on hover.
 const DESCRIPTION_MAX = 45;
 const shorten = (text: string) => {
   if (text.length <= DESCRIPTION_MAX) return text;
   const cut = text.slice(0, DESCRIPTION_MAX + 1);
-  return cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:\s]+$/, '');
+  return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:\s]+$/, '')}…`;
 };
 
 // The filter cutoff sweeps by octaves, so the slider works on a log scale.
@@ -64,6 +65,9 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
     }
   };
 
+  const description = currentPatch?.description ?? '';
+  const shortDescription = shorten(description);
+
   return (
     <>
       {/* Two fixed rows: what's playing, then how it sounds. The description is one truncated line,
@@ -80,7 +84,13 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
           />
           <VStack gap={0} className="strip__name">
             <Text type="label" maxLines={1}>{currentPatch?.name ?? 'No patch'}</Text>
-            <Text type="supporting" size="xsm" maxLines={1}>{shorten(currentPatch?.description ?? '')}</Text>
+            {description.length > shortDescription.length - 1 && shortDescription.endsWith('…') ? (
+              <Tooltip content={description}>
+                <Text type="supporting" size="xsm" maxLines={1}>{shortDescription}</Text>
+              </Tooltip>
+            ) : (
+              <Text type="supporting" size="xsm" maxLines={1}>{shortDescription}</Text>
+            )}
           </VStack>
         </HStack>
         <HStack key={`controls-${arrival}`} gap={4} align="center" className={arrival ? 'strip__controls strip__arrive strip__arrive--late' : 'strip__controls'}>

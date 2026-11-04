@@ -26,7 +26,8 @@ const offsetOf = (index: number, active: number, count: number) => {
 
 export const SimCarousel: React.FC<SimCarouselProps> = ({ audioDataRef, shouldTimeAdvance, resetTrigger }) => {
   const count = simulations.length;
-  const [active, setActive] = useState(0);
+  // Opens on Swarm, wherever it sits in the loop.
+  const [active, setActive] = useState(() => Math.max(0, simulations.findIndex((sim) => sim.title === 'Swarm')));
   const lastWheel = useRef(0);
 
   const step = useCallback((dir: 1 | -1) => setActive((a) => (a + dir + count) % count), [count]);
