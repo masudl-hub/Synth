@@ -41,7 +41,8 @@ const setup = (shouldTimeAdvance = true, ctx: CanvasRenderingContext2D | null = 
   };
   const audioDataRef: React.MutableRefObject<AudioFeatures> = { current: silentFeatures() };
   const hook = renderHook(
-    ({ advance, trigger }: { advance: boolean; trigger: number }) => useCanvas(draw, audioDataRef, advance, trigger),
+    ({ advance, trigger }: { advance: boolean; trigger: number }) =>
+      useCanvas(draw, audioDataRef, { shouldTimeAdvance: advance, resetTrigger: trigger }),
     { initialProps: { advance: shouldTimeAdvance, trigger: 0 } },
   );
   // The mount frame finds no canvas yet and stops; attaching one and hovering restarts the loop.

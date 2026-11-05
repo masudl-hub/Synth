@@ -252,6 +252,41 @@ export const CANVAS_NOTES: CanvasNote[] = [
     reacts: "The curve is the sound's own samples, scaled to fit. Only the pointer's push is added.",
   },
   {
+    title: 'Recur',
+    plain:
+      'A map of when the sound repeats itself. Both edges are the same stretch of time, about 22 milliseconds long. A square lights up when the sound at one moment was in nearly the same state as at another. A steady note draws diagonal stripes, one period apart, and noise breaks them into grain.',
+    latex: String.raw`«R|R_{ij}»=«theta|\Theta»\bigl(«eps|\varepsilon»-«dist|\lVert x_i-x_j\rVert»\bigr),\qquad «x|x_i»=\bigl(«s|s_i»,\ s_{i+«tau|\tau»},\ s_{i+2\tau}\bigr)`,
+    tips: {
+      R: {
+        name: 'One square',
+        text: 'Row i and column j are two moments in the window. The square is lit when the sound was in nearly the same state at both. The diagonal is always lit, since every moment matches itself.',
+      },
+      theta: {
+        name: 'Step function',
+        text: 'Gives 1 when what is inside the brackets is positive and 0 otherwise. Here it decides lit or dark.',
+      },
+      eps: {
+        name: 'Threshold',
+        text: 'How close two states must be to count as the same. It is set again on every frame so that one pair in ten counts, a common choice that keeps the picture readable at any volume (Marwan et al., 2007).',
+      },
+      dist: {
+        name: 'Distance between two states',
+        text: 'The ordinary straight-line distance between the two states, as points in three dimensions.',
+      },
+      x: {
+        name: 'State of the sound',
+        text: 'Three samples of the sound, τ apart, taken as one point in three dimensions. This is the same delay trick as Phase: Takens (1981) showed it can recover the shape of the system that made the signal.',
+      },
+      s: {
+        name: 'Sample',
+        text: 'The sound at one moment, averaged over 8 raw samples, so one point is about a sixth of a millisecond.',
+      },
+      tau: { name: 'The delay', text: 'Three points, or 24 raw samples, about half a millisecond.' },
+    },
+    reacts:
+      "Every square is computed from the sound's own samples. The window starts where the wave crosses zero going up, so a steady note holds still, and each frame is blended with the last few, so a held pattern stays solid and flicker fades. The pointer does nothing here.",
+  },
+  {
     title: 'Fluid',
     plain:
       'A field of little arrows describing a flow, with particles carried along it. The flow smooths itself out and slows down, and sudden sounds stir it. It uses one idea from real fluid simulation, the spreading-out step, and none of the rest.',

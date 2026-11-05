@@ -1,5 +1,5 @@
 {
   "name": "Cymatics Lab",
-  "description": "Describe a sound and Gemini writes it as a synth patch. The browser plays it, and thirteen canvases draw it with real maths, each labelled with how much of it is real physics.",
+  "description": "Describe a sound and Gemini writes it as a synth patch. The browser plays it, and fourteen canvases draw it with real maths, each labelled with how much of it is real physics.",
   "requestFramePermissions": ["microphone"]
 }

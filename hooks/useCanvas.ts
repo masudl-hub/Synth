@@ -33,13 +33,22 @@ const easePointer = (mouse: Point, smooth: Point, home: Point | null) => {
   }
 };
 
+export interface CanvasOptions {
+  shouldTimeAdvance?: boolean;
+  resetTrigger?: unknown;
+  /** Runs after each frame is drawn. */
+  onFrame?: (canvas: HTMLCanvasElement) => void;
+}
+
 export const useCanvas = (
   draw: DrawFunction,
   audioDataRef: React.RefObject<AudioFeatures>,
-  shouldTimeAdvance = true,
-  resetTrigger?: unknown,
+  { shouldTimeAdvance = true, resetTrigger, onFrame }: CanvasOptions = {},
 ) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Read each frame, so a new callback every render doesn't rebuild the loop.
+  const onFrameRef = useRef(onFrame);
+  onFrameRef.current = onFrame;
   const requestRef = useRef<number | null>(null);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -119,6 +128,7 @@ export const useCanvas = (
         isHovered,
         audio: audioDataRef.current,
       });
+      onFrameRef.current?.(canvas);
 
       requestRef.current = requestAnimationFrame(animate);
     };

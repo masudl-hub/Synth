@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { silentFeatures } from '../audio/analysis.ts';
 import type { AudioFeatures, Point } from '../types.ts';
-import { legendre, simulations } from './logic.ts';
+import { legendre, readOverlayValues, simulations } from './logic.ts';
 
 interface Call {
   name: string;
@@ -69,7 +69,7 @@ const run = (draw: (typeof simulations)[number]['draw'], audio: AudioFeatures, m
   for (let frame = 0; frame < 4; frame++) {
     draw({ ctx, width: WIDTH, height: HEIGHT, time: frame * 0.016, mouse, isHovered: mouse === MOUSE_IN, audio });
   }
-  return calls;
+  return { calls, values: readOverlayValues(ctx.canvas) };
 };
 
 describe('legendre', () => {
@@ -90,9 +90,9 @@ describe('legendre', () => {
 });
 
 describe('simulations', () => {
-  it('lists thirteen drawings with unique ids', () => {
-    expect(simulations).toHaveLength(13);
-    expect(new Set(simulations.map((s) => s.id)).size).toBe(13);
+  it('lists fourteen drawings with unique ids', () => {
+    expect(simulations).toHaveLength(14);
+    expect(new Set(simulations.map((s) => s.id)).size).toBe(14);
   });
 
   const cases = [
@@ -108,20 +108,20 @@ describe('simulations', () => {
           ['inside', MOUSE_IN],
           ['outside', MOUSE_OUT],
         ] as const) {
-          it(`draws finite shapes and its formula, ${label}, mouse ${where}`, () => {
-            const calls = run(sim.draw, audio(), mouse, false);
+          it(`draws finite shapes and reports its values, ${label}, mouse ${where}`, () => {
+            const { calls, values } = run(sim.draw, audio(), mouse, false);
             expect(calls.length).toBeGreaterThan(0);
             for (const n of numbersIn(calls)) {
               expect(Number.isFinite(n)).toBe(true);
             }
-            expect(calls.some((c) => c.name === 'fillText' && c.args[0] === sim.formula)).toBe(true);
+            expect(values).toContain('=');
           });
         }
       }
 
       it('draws the shapes alone when bare', () => {
-        const calls = run(sim.draw, loudFeatures(0.5), MOUSE_IN, true);
-        expect(calls.some((c) => c.name === 'fillText' && c.args[0] === sim.formula)).toBe(false);
+        const { calls, values } = run(sim.draw, loudFeatures(0.5), MOUSE_IN, true);
+        expect(values).toBeUndefined();
         for (const n of numbersIn(calls)) {
           expect(Number.isFinite(n)).toBe(true);
         }

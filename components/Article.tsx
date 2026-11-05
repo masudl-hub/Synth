@@ -130,7 +130,7 @@ const Shapes: React.FC<{ sim: SimulationDef; audioDataRef: React.RefObject<Audio
   sim,
   audioDataRef,
 }) => {
-  const { canvasRef, handleMouseMove, handleMouseEnter, handleMouseLeave } = useCanvas(sim.draw, audioDataRef, true);
+  const { canvasRef, handleMouseMove, handleMouseEnter, handleMouseLeave } = useCanvas(sim.draw, audioDataRef);
   return (
     <canvas
       ref={canvasRef}
@@ -255,7 +255,7 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
           <SignalDiagram />
         </VStack>
 
-        <Heading level={2}>The thirteen canvases</Heading>
+        <Heading level={2}>The fourteen canvases</Heading>
         <P>
           Most canvases also answer the pointer: moving it pushes, tilts or stirs the picture. That is there for play
           and is not part of any formula below.

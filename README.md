@@ -4,7 +4,7 @@
 
 **Describe a sound. Hear it. See it, drawn by real maths.**
 
-You describe a sound in words or with an image, and Gemini writes it as a synth patch in JSON. The browser plays the patch, and thirteen canvases draw it live. Each canvas says how much of its picture is real physics.
+You describe a sound in words or with an image, and Gemini writes it as a synth patch in JSON. The browser plays the patch, and fourteen canvases draw it live. Each canvas says how much of its picture is real physics.
 
 [**Open the lab →**](https://cymatics.masudlewis.com) · [Read how it works](https://cymatics.masudlewis.com/why)
 
@@ -21,12 +21,12 @@ You describe a sound in words or with an image, and Gemini writes it as a synth 
 
 - **Write a sound in plain words.** Type "a slow acid line under glassy bells", or attach up to two images, and pick a loop length from 2 to 32 bars. Gemini returns a complete patch: tempo, swing, a lead and a bass, drums and effects. Ask again and it refines the patch in place.
 - **Play it in the browser.** A small Web Audio synth plays the patch with no samples and no server.
-- **Watch it in thirteen ways.** A spectrogram, a Lorenz attractor, a Tonnetz, Chladni patterns, Lissajous figures and others. The canvases read the live FFT, waveform, spectral centroid and spectral flux.
+- **Watch it in fourteen ways.** A spectrogram, a Lorenz attractor, a Tonnetz, a recurrence plot, Chladni patterns, Lissajous figures and others. The canvases read the live FFT, waveform, spectral centroid and spectral flux.
 - **Know what is real.** Each canvas has one of four labels:
 
   | Label | Meaning |
   | --- | --- |
-  | **Computes** | The picture is computed from the sound (Ridge, Phase, Vector, Lattice, Chaos). |
+  | **Computes** | The picture is computed from the sound (Ridge, Phase, Recur, Vector, Lattice, Chaos). |
   | **Idealised** | Textbook physics in its ideal form, with the sound setting its inputs (Warp, Array, Twist, Swarm). |
   | **Inspired by** | Takes its form from real physics, but is not a model of it (Holo, Hive, Fluid). |
   | **Artistic** | Invented texture, moved by the sound (Strata). |
@@ -68,7 +68,7 @@ flowchart LR
   D --> E[SynthEngine<br/>Web Audio]
   E --> F[Analyser<br/>FFT · centroid · flux]
   M[Microphone] -.-> F
-  F --> G[13 canvases]
+  F --> G[14 canvases]
 ```
 
 | Layer | What runs it |

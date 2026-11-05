@@ -2,7 +2,7 @@ import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { TipMarker } from './TipMarker.tsx';
 
-/* Two ways in, one analyser, thirteen canvases. Colours come from the theme so it follows light and dark. */
+/* Two ways in, one analyser, fourteen canvases. Colours come from the theme so it follows light and dark. */
 const LINE = 'var(--color-border)';
 const INK = 'var(--color-text-primary)';
 const SOFT = 'var(--color-text-secondary)';
@@ -35,7 +35,7 @@ const TIPS: Record<string, { name: string; text: string }> = {
     text: 'Two FFT analysers, one quick (256 points) and one detailed (8,192), watch the final signal every 16 milliseconds. From them come the level (RMS), the bass, mid and treble levels, the brightness (the spectral centroid), the onsets (spectral flux), the strongest partial, and how much of each of the twelve notes is sounding. The synth and the microphone share this code, so a canvas cannot tell which one it is drawing.',
   },
   canvases: {
-    name: 'Thirteen canvases',
+    name: 'Fourteen canvases',
     text: 'Each canvas is a function the page calls on every animation frame with the latest numbers. It draws one relation from physics or maths with those numbers as its inputs, and says how faithful it is: Computes, Idealised, Inspired by or Artistic. The formulas below show what each part does.',
   },
 };
@@ -120,7 +120,7 @@ const Label: React.FC<{ x: number; y: number; children: React.ReactNode; anchor?
   </text>
 );
 
-/** The drawing itself: two ways in, one analyser, thirteen canvases. */
+/** The drawing itself: two ways in, one analyser, fourteen canvases. */
 const Diagram: React.FC = () => (
   <svg viewBox="0 0 720 580" role="presentation" className="article__diagram" fontFamily="var(--font-family-body)">
     <defs>
@@ -187,7 +187,7 @@ const Diagram: React.FC = () => (
       y={500}
       w={640}
       h={64}
-      title="Thirteen canvases"
+      title="Fourteen canvases"
       note="each one draws a relation from that data, and says how closely it follows the physics"
     />
   </svg>

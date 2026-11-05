@@ -101,11 +101,68 @@ body {
   height: 100%;
 }
 
+/* The info spans the top of the tile and the equation the bottom, so their scrims can too. */
 .sim-tile__info {
   position: absolute;
-  top: var(--spacing-4);
-  left: var(--spacing-4);
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: var(--spacing-4);
+}
+
+.sim-tile__equation {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  padding: var(--spacing-2) var(--spacing-3);
+  white-space: nowrap;
+}
+
+/* Scrim: hovering the text darkens the tile behind it, solid at the edge and fading out past the text.
+   Only the text catches the pointer; the rest passes through to the canvas. Needs a positioned element. */
+.scrim {
+  isolation: isolate;
   pointer-events: none;
+}
+
+.scrim > * {
+  width: fit-content;
+  pointer-events: auto;
+}
+
+.scrim::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(100% + var(--spacing-12));
+  z-index: -1;
+  background: linear-gradient(
+    var(--scrim-direction),
+    var(--color-background-card) 0%,
+    var(--color-background-card) 45%,
+    transparent 100%
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.scrim:hover::before {
+  opacity: 0.9;
+}
+
+.scrim--top::before {
+  --scrim-direction: to bottom;
+  top: 0;
+}
+
+.scrim--bottom::before {
+  --scrim-direction: to top;
+  bottom: 0;
 }
 
 /* Controls strip: always mounted, so switching mode never resizes the page */

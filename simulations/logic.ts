@@ -9,39 +9,21 @@ const fitTo = (ctx: CanvasRenderingContext2D, width: number, height: number, ref
   ctx.canvas.dataset.bare ? Math.min(1, Math.min(width, height) / reference) : 1;
 
 // --- HUD Helper ---
-const drawEquationOverlay = (
-  { ctx, width, height }: Pick<SimulationContext, 'ctx' | 'width' | 'height'>,
-  equation: string,
-  vars: Record<string, string | number>,
-) => {
+// Each drawing's live values, by canvas. The tile shows them under the drawing as text, beside the formula.
+const overlayValues = new WeakMap<object, string>();
+
+/** The values the last frame drawn on `canvas` reported, or undefined when it reported none. */
+export const readOverlayValues = (canvas: object) => overlayValues.get(canvas);
+
+const drawEquationOverlay = (ctx: CanvasRenderingContext2D, vars: Record<string, string | number>) => {
   // The article draws the shapes alone.
   if (ctx.canvas.dataset.bare) {
     return;
   }
-  const barHeight = 24;
-  const padding = 12;
-
-  // Text Config
-  ctx.font = '10px Geist, sans-serif';
-  ctx.textBaseline = 'middle';
-
-  // Draw Equation (Left)
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#71717a'; // Zinc-500
-  ctx.fillText(equation, padding, height - barHeight / 2);
-
-  // Draw Vars (Right)
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#e4e4e7'; // Zinc-200 (Brighter for values)
-
-  const varString = Object.entries(vars)
-    .map(([k, v]) => {
-      const valStr = typeof v === 'number' ? v.toFixed(2) : v;
-      return `${k}=${valStr}`;
-    })
+  const values = Object.entries(vars)
+    .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toFixed(2) : v}`)
     .join('   ');
-
-  ctx.fillText(varString, width - padding, height - barHeight / 2);
+  overlayValues.set(ctx.canvas, values);
 };
 
 /* Name, source and formula for every simulation. The overlay prints the formula, so it can't drift from the card. */
@@ -138,6 +120,14 @@ const META = {
     fidelity: 'computes' as const,
     reference: 'Lorenz, J. Atmos. Sci. 20(2), 130–141, 1963',
     formula: 'x′ = σ(y−x),  y′ = x(ρ−z)−y,  z′ = xy−βz',
+  },
+  recur: {
+    title: 'Recur',
+    description: 'Recurrence Plot',
+    fidelity: 'computes' as const,
+    reference:
+      'Eckmann, Kamphorst & Ruelle, Europhys. Lett. 4(9), 973–977, 1987; Marwan et al., Phys. Rep. 438, 237–329, 2007',
+    formula: 'Rᵢⱼ = Θ(ε − ‖xᵢ − xⱼ‖),  xᵢ = (sᵢ, sᵢ₊τ, sᵢ₊₂τ)',
   },
 };
 
@@ -285,7 +275,7 @@ const drawRidges = ({ ctx, width, height, time, mouse, audio }: SimulationContex
   }
 
   // Only the lowest 70% of bins are drawn.
-  drawEquationOverlay({ ctx, width, height }, META.ridge.formula, {
+  drawEquationOverlay(ctx, {
     f: `0–${((audio.sampleRate * 0.35) / 1000).toFixed(1)} kHz`,
     t: time,
   });
@@ -375,7 +365,7 @@ const drawHoloSphere = ({ ctx, width, height, time, mouse, audio }: SimulationCo
     }
   }
 
-  drawEquationOverlay({ ctx, width, height }, META.holo.formula, {
+  drawEquationOverlay(ctx, {
     l: degree,
     m: order,
     A: audio.bass,
@@ -436,7 +426,7 @@ const drawWarpedGrid = ({ ctx, width, height, mouse, audio }: SimulationContext)
   drawLines(true);
   drawLines(false);
 
-  drawEquationOverlay({ ctx, width, height }, META.warp.formula, {
+  drawEquationOverlay(ctx, {
     n,
     m,
     Amp: audio.volume,
@@ -487,7 +477,7 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay({ ctx, width, height }, META.strata.formula, {
+  drawEquationOverlay(ctx, {
     V: audio.volume,
     T: audio.treble,
   });
@@ -595,7 +585,7 @@ const drawFluidArrays = ({ ctx, width, height, mouse, audio }: SimulationContext
     ctx.fill();
   }
 
-  drawEquationOverlay({ ctx, width, height }, META.array.formula, {
+  drawEquationOverlay(ctx, {
     n,
     m,
     E: audio.volume,
@@ -649,7 +639,7 @@ const drawTwist = ({ ctx, width, height, time, mouse, audio }: SimulationContext
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay({ ctx, width, height }, META.twist.formula, {
+  drawEquationOverlay(ctx, {
     n: baseMode,
     A: (40 * audio.volume).toFixed(1),
   });
@@ -703,7 +693,7 @@ const drawParticles = ({ ctx, width, height, time, mouse, audio }: SimulationCon
     ctx.fill();
   }
 
-  drawEquationOverlay({ ctx, width, height }, META.swarm.formula, {
+  drawEquationOverlay(ctx, {
     a: f1,
     b: f2.toFixed(1),
   });
@@ -764,7 +754,7 @@ const drawHex = ({ ctx, width, height, time, mouse, audio }: SimulationContext) 
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay({ ctx, width, height }, META.hive.formula, {
+  drawEquationOverlay(ctx, {
     k,
     ω: omega.toFixed(1),
     A: audio.volume,
@@ -815,7 +805,7 @@ const drawPhaseSpace = ({ ctx, width, height, mouse, audio }: SimulationContext)
   }
   ctx.stroke();
 
-  drawEquationOverlay({ ctx, width, height }, META.phase.formula, {
+  drawEquationOverlay(ctx, {
     τ: `${delay} smp`,
     f_pk: `${audio.peakHz.toFixed(0)} Hz`,
   });
@@ -1007,7 +997,7 @@ const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext
   diffuseFluid(grid, time, audio);
   advectFluid(ctx, grid, audio);
 
-  drawEquationOverlay({ ctx, width, height }, META.fluid.formula, {
+  drawEquationOverlay(ctx, {
     F: audio.flux,
   });
 };
@@ -1071,7 +1061,7 @@ const drawPolarSpectrum = ({ ctx, width, height, time, mouse, audio }: Simulatio
   ctx.arc(cx, cy, core, 0, Math.PI * 2);
   ctx.fill();
 
-  drawEquationOverlay({ ctx, width, height }, META.vector.formula, {
+  drawEquationOverlay(ctx, {
     f: `0–${(audio.sampleRate / 2000).toFixed(1)} kHz`,
     R: radius.toFixed(0),
   });
@@ -1147,7 +1137,7 @@ const drawTonnetz = ({ ctx, width, height, mouse, audio }: SimulationContext) =>
     }
   }
 
-  drawEquationOverlay({ ctx, width, height }, META.lattice.formula, {
+  drawEquationOverlay(ctx, {
     Peak: peakClass >= 0 ? PITCH_NAMES[peakClass] : '–',
     f: `${audio.peakHz.toFixed(0)} Hz`,
   });
@@ -1246,9 +1236,103 @@ const drawLorenz = ({ ctx, width, height, time, mouse, audio }: SimulationContex
   }
   ctx.stroke();
 
-  drawEquationOverlay({ ctx, width, height }, META.chaos.formula, {
+  drawEquationOverlay(ctx, {
     ρ: rho.toFixed(1),
     σ: sigma,
+  });
+};
+
+/* --- 14. Recur (Recurrence Plot) --- */
+const REC_POINTS = 128;
+const REC_AVERAGE = 8; // raw samples averaged into one point
+const REC_DIM = 3;
+const REC_LAG = 3;
+const REC_RATE = 0.1; // the share of pairs that count as recurring
+const REC_LEVELS = 6;
+// Each canvas keeps its own blend of recent frames.
+const recurrenceTrails = new WeakMap<object, Float32Array>();
+
+/** The sound, averaged down, from a rising zero crossing, so a steady note lands in the same place each frame. Null when silent. */
+const recurrenceWindow = (scope: Float32Array) => {
+  const y = new Float32Array(REC_POINTS + (REC_DIM - 1) * REC_LAG);
+  const span = y.length * REC_AVERAGE;
+  let start = 0;
+  for (let t = 1; t < scope.length - span; t++) {
+    if (scope[t - 1] < 0 && scope[t] >= 0) {
+      start = t;
+      break;
+    }
+  }
+  let energy = 0;
+  for (let i = 0; i < y.length; i++) {
+    let sum = 0;
+    for (let d = 0; d < REC_AVERAGE; d++) {
+      sum += scope[start + i * REC_AVERAGE + d];
+    }
+    y[i] = sum / REC_AVERAGE;
+    energy += y[i] * y[i];
+  }
+  return energy / y.length > 1e-7 ? y : null;
+};
+
+/** Distances between every pair of delay-embedded states, and the ε that makes REC_RATE of the pairs recur. */
+const recurrenceMatrix = (y: Float32Array) => {
+  const n = REC_POINTS;
+  const dists = new Float32Array(n * n);
+  const pairs = new Float32Array((n * (n - 1)) / 2);
+  let p = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < i; j++) {
+      let sum = 0;
+      for (let e = 0; e < REC_DIM; e++) {
+        const d = y[i + e * REC_LAG] - y[j + e * REC_LAG];
+        sum += d * d;
+      }
+      const d = Math.sqrt(sum);
+      dists[i * n + j] = d;
+      dists[j * n + i] = d;
+      pairs[p++] = d;
+    }
+  }
+  pairs.sort();
+  return { dists, eps: pairs[Math.floor(pairs.length * REC_RATE)] };
+};
+
+const drawRecurrence = ({ ctx, width, height, audio }: SimulationContext) => {
+  const trail = recurrenceTrails.get(ctx.canvas) ?? new Float32Array(REC_POINTS * REC_POINTS);
+  recurrenceTrails.set(ctx.canvas, trail);
+  const y = recurrenceWindow(audio.scope);
+  let eps = 0;
+  if (y) {
+    const m = recurrenceMatrix(y);
+    eps = m.eps;
+    // Blending each frame into the last keeps what repeats and lets what flickers fade.
+    for (let i = 0; i < trail.length; i++) {
+      trail[i] = trail[i] * 0.85 + (m.dists[i] <= eps ? 0.15 : 0);
+    }
+  } else {
+    trail.fill(0);
+  }
+
+  // The plot fills the whole tile, stretched to its shape, like the other canvases.
+  const cellW = width / REC_POINTS;
+  const cellH = height / REC_POINTS;
+  ctx.fillStyle = COLOR_STROKE;
+  for (let level = 1; level <= REC_LEVELS; level++) {
+    ctx.globalAlpha = level / REC_LEVELS;
+    ctx.beginPath();
+    for (let i = 0; i < trail.length; i++) {
+      if (Math.round(trail[i] * REC_LEVELS) === level) {
+        ctx.rect((i % REC_POINTS) * cellW, Math.floor(i / REC_POINTS) * cellH, cellW, cellH);
+      }
+    }
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  drawEquationOverlay(ctx, {
+    ε: eps.toFixed(3),
+    RR: '10%',
   });
 };
 
@@ -1262,6 +1346,7 @@ export const simulations: SimulationDef[] = [
   { id: 7, ...META.swarm, draw: drawParticles },
   { id: 5, ...META.array, draw: drawFluidArrays },
   { id: 9, ...META.phase, draw: drawPhaseSpace },
+  { id: 14, ...META.recur, draw: drawRecurrence },
   { id: 10, ...META.fluid, draw: drawFluid },
   { id: 11, ...META.vector, draw: drawPolarSpectrum },
   { id: 12, ...META.lattice, draw: drawTonnetz },

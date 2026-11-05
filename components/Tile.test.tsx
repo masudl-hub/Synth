@@ -44,4 +44,12 @@ describe('Tile', () => {
     expect(container.querySelector('.sim-tile__info')).toBeNull();
     expect(container.querySelector('canvas')?.style.cursor).toBe('pointer');
   });
+
+  it('writes the formula under every canvas', () => {
+    for (const isFeatured of [true, false]) {
+      const { container } = renderTile(isFeatured);
+      expect(container.querySelector('.sim-tile__equation')?.textContent).toBe('x');
+      cleanup();
+    }
+  });
 });
