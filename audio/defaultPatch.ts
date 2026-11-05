@@ -137,7 +137,7 @@ const BASS: Row[] = [
   [58.27, 248, 4, 1],
 ];
 
-export const DEFAULT_PATCH: SynthPatch = {
+export const BLACK_RAIN: SynthPatch = {
   name: 'Black Rain',
   description: 'Extended 16-bar dark cinematic journey with evolving phrases and heavy bass.',
   bpm: 100,
@@ -151,4 +151,58 @@ export const DEFAULT_PATCH: SynthPatch = {
   reverb: { decay: 2.4, mix: 0.5 },
   melody: notes(MELODY),
   bassline: notes(BASS),
+};
+
+const YOUTH_MELODY: Row[] = [
+  [329.63, 0, 8, 1],
+  [293.66, 16, 8, 1],
+  [261.63, 32, 8, 1],
+  [196, 48, 8, 1],
+  [329.63, 64, 8, 1],
+  [293.66, 80, 8, 1],
+  [349.23, 96, 8, 1],
+  [392, 112, 8, 1],
+  [329.63, 128, 8, 1],
+  [293.66, 144, 8, 1],
+  [261.63, 160, 8, 1],
+  [196, 176, 8, 1],
+  [329.63, 192, 16, 1],
+  [392, 224, 16, 1],
+];
+
+const YOUTH_BASS: Row[] = [
+  [82.41, 0, 32, 1],
+  [65.41, 32, 32, 1],
+  [82.41, 64, 32, 1],
+  [73.42, 96, 32, 1],
+  [82.41, 128, 32, 1],
+  [65.41, 160, 32, 1],
+  [82.41, 192, 32, 1],
+  [92.5, 224, 32, 1],
+];
+
+const YOUTH_ENVELOPE = { attack: 0.2, decay: 0.5, sustain: 0.6, release: 1 };
+
+/** The patch the studio opens with. */
+export const DEFAULT_PATCH: SynthPatch = {
+  name: 'Lost Youth',
+  description: 'Nostalgic, detuned analog pads',
+  bpm: 100,
+  totalSteps: 256,
+  lead: {
+    oscillator: { type: 'sine', detune: 15, fmAmount: 5, fmRatio: 2 },
+    sub: 0,
+    filter: { type: 'lowpass', frequency: 9683, q: 0.5, envAmount: 0 },
+    envelope: YOUTH_ENVELOPE,
+  },
+  bass: {
+    oscillator: { type: 'sawtooth', detune: 0, fmAmount: 5, fmRatio: 2 },
+    sub: 1,
+    filter: { type: 'lowpass', frequency: 800, q: 0.5, envAmount: 0 },
+    envelope: YOUTH_ENVELOPE,
+  },
+  delay: { time: 0.45, feedback: 0.3, mix: 0.2 },
+  reverb: { decay: 2.5, mix: 0.4 },
+  melody: notes(YOUTH_MELODY),
+  bassline: notes(YOUTH_BASS),
 };

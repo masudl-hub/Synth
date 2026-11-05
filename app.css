@@ -502,10 +502,13 @@ dialog.astryx-dialog {
   }
 }
 
-/* Narrow carousels show a bigger centre tile, with neighbours peeking in */
+/* Narrow carousels show a bigger centre tile, with neighbours peeking in. It stands as tall as the carousel allows,
+   up to a 2:3 portrait, rather than wasting the height a phone has spare. */
 @container (max-width: 40rem) {
   .sim-carousel__slot {
     width: min(100cqh, 86cqw);
+    height: min(100cqh, 129cqw);
+    aspect-ratio: auto;
   }
 }
 

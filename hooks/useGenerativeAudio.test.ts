@@ -213,7 +213,7 @@ describe('useGenerativeAudio library', () => {
   it('normalizes every preset once, so each compares equal to its playing copy', async () => {
     const { result } = await setup();
     const presets = Object.values(result.current.PRESETS);
-    expect(presets).toHaveLength(6);
+    expect(presets).toHaveLength(7);
     for (const preset of presets) {
       expect(normalizePatch(preset)).toEqual(preset);
     }

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { silentFeatures } from '../audio/analysis.ts';
-import { DEFAULT_PATCH } from '../audio/defaultPatch.ts';
+import { BLACK_RAIN, DEFAULT_PATCH } from '../audio/defaultPatch.ts';
 import { focusPart, normalizePatch, oneSound } from '../audio/patch.ts';
 import { PORCELAIN_BEATS } from '../audio/porcelainBeats.ts';
 import { SynthEngine } from '../audio/SynthEngine.ts';
@@ -86,29 +86,7 @@ const PRESET_SOURCES: Record<string, SynthPatch> = {
       { freq: 55, startStep: 8, durationSteps: 4 },
     ],
   },
-  Youth: {
-    name: 'Lost Youth',
-    description: 'Nostalgic, detuned analog pads',
-    bpm: 100,
-    totalSteps: 64,
-    ...oneSound({
-      oscillator: { type: 'sawtooth', detune: 15, fmAmount: 5 },
-      filter: { type: 'lowpass', frequency: 800, q: 0.5 },
-      envelope: { attack: 0.2, decay: 0.5, sustain: 0.6, release: 1.0 },
-    }),
-    delay: { time: 0.45, feedback: 0.3, mix: 0.2 },
-    reverb: { decay: 2.5, mix: 0.4 },
-    melody: [
-      { freq: 329.63, startStep: 0, durationSteps: 8 },
-      { freq: 293.66, startStep: 16, durationSteps: 8 },
-      { freq: 261.63, startStep: 32, durationSteps: 8 },
-      { freq: 196.0, startStep: 48, durationSteps: 8 },
-    ],
-    bassline: [
-      { freq: 82.41, startStep: 0, durationSteps: 32 },
-      { freq: 65.41, startStep: 32, durationSteps: 32 },
-    ],
-  },
+  Youth: DEFAULT_PATCH,
   Blue: {
     name: 'Blue Monday',
     description: 'Steady, driving synth-pop bass',
@@ -133,6 +111,7 @@ const PRESET_SOURCES: Record<string, SynthPatch> = {
       { freq: 146, startStep: 14, durationSteps: 2 },
     ],
   },
+  Rain: BLACK_RAIN,
 };
 
 // Normalized once, so a preset and the copy of it that is playing compare equal.

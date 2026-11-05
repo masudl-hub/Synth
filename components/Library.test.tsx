@@ -40,9 +40,9 @@ describe('Library', () => {
     setup();
     const [preset] = cards('Preset one');
     const [one, half] = cards('Mine');
-    expect(chipsOf(preset)).toEqual(['sawtooth', '2 bars']);
-    expect(chipsOf(one)).toEqual(['sawtooth', '1 bar', 'saved']);
-    expect(chipsOf(half)).toEqual(['sawtooth', '1.5 bars', 'saved']);
+    expect(chipsOf(preset)).toEqual(['sine', '2 bars']);
+    expect(chipsOf(one)).toEqual(['sine', '1 bar', 'saved']);
+    expect(chipsOf(half)).toEqual(['sine', '1.5 bars', 'saved']);
   });
 
   it('loads a patch from its card', () => {
