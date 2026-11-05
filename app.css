@@ -734,7 +734,7 @@ dialog.astryx-dialog {
   text-underline-offset: 0.25em;
 }
 
-.article__formula [data-tip]:hover {
+.article__formula [data-tip][data-active] {
   background: var(--color-background-card-raised);
 }
 
