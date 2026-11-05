@@ -743,6 +743,9 @@ dialog.astryx-dialog {
   pointer-events: none;
 }
 
+/* The studio's controls sit behind the article; hidden outright so they never show through it while it fades. */
+.app[data-view='article'] > :not(.app__toggle, .app__header, .article) { visibility: hidden; }
+
 /* Moving between the studio and the article: everything but the toggles eases out together, swaps, and eases in together. */
 .app[data-phase='out'] > :not(.app__toggle) {
   opacity: 0; transform: translateY(0.5rem);

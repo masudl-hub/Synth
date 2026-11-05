@@ -134,7 +134,7 @@ export default function App() {
 
   return (
     <Theme theme={themes[defaultThemeSlug]} mode="dark">
-      <main className="app" data-phase={phase}>
+      <main className="app" data-phase={phase} data-view={showArticle ? 'article' : 'studio'}>
         <HStack gap={1} align="center" className="app__toggle">
           <IconButton
             label="Start over"
