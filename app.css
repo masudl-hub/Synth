@@ -626,12 +626,23 @@ dialog.astryx-dialog {
   z-index: 5;
   overflow-y: auto;
   background: var(--color-background-body);
-  padding: calc(2 * var(--spacing-12)) 0 calc(4 * var(--spacing-12));
+  padding: 0 0 calc(4 * var(--spacing-12));
+}
+
+.article__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--spacing-4) var(--spacing-4) var(--spacing-3);
+  background: var(--color-background-body);
+  text-align: center;
 }
 
 .article__column {
+  margin-top: var(--spacing-8);
   max-width: 40rem;
-  margin: 0 auto;
+  margin-left: auto;
+  margin-right: auto;
   padding: 0 var(--spacing-4);
   box-sizing: border-box;
   text-align: left;
@@ -683,4 +694,22 @@ dialog.astryx-dialog {
 
 .article__symbols {
   max-width: 34rem;
+}
+
+/* Parts of a formula that carry a tip. */
+.article [data-tip] {
+  cursor: help;
+  border-radius: var(--radius-1, 2px);
+  text-decoration: underline dotted;
+  text-decoration-color: var(--color-text-secondary);
+  text-underline-offset: 0.25em;
+}
+
+.article [data-tip]:hover {
+  background: var(--color-background-card-raised);
+}
+
+.article__marker {
+  position: fixed;
+  pointer-events: none;
 }
