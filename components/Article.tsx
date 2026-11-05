@@ -121,10 +121,6 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
   return (
   <article className="article" aria-label="About cymatics lab">
     <VStack gap={6} align="start" className="article__column">
-      <VStack gap={0.5} align="center" className="article__title">
-        <Text type="large" weight="semibold">cymatics lab</Text>
-        <Text type="supporting" size="xsm">Generative Audio Physics</Text>
-      </VStack>
       <Heading level={1} type="display-2" textWrap="balance">Making sound visible, honestly</Heading>
 
       <VStack gap={4} align="start">

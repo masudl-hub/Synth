@@ -44,6 +44,13 @@ body {
 
 .app__header {
   text-align: center;
+  /* Stays where it is over the article, which scrolls beneath it. */
+  position: relative;
+  z-index: 6;
+  justify-self: stretch;
+  margin: calc(-1 * var(--spacing-4)) calc(-1 * var(--spacing-4)) 0;
+  padding: var(--spacing-4) var(--spacing-4) 0;
+  background: var(--color-background-body);
 }
 
 /* Carousel */
@@ -393,7 +400,7 @@ dialog.astryx-dialog {
 }
 
 .app__toggle {
-  z-index: 6;
+  z-index: 7;
   position: absolute;
   top: var(--spacing-4);
   right: var(--spacing-4);
@@ -753,4 +760,3 @@ dialog.astryx-dialog {
   .app[data-phase='in'] > :not(.app__toggle) { animation: none; }
 }
 
-.article__title { align-self: stretch; text-align: center; }

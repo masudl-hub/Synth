@@ -25,6 +25,7 @@ import { useDynamicFavicon } from './hooks/useDynamicFavicon';
 const ARTICLE_PATH = '/why';
 const VIEW_EASE_OUT = 220;
 const VIEW_EASE_IN = 320;
+const PAINT_WAIT_MAX = 600;
 const isArticlePath = () => window.location.pathname.replace(/\/+$/, '') === ARTICLE_PATH;
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
   const [activeSim, setActiveSim] = useState(() => Math.max(0, simulations.findIndex((sim) => sim.title === 'Swarm')));
   const [phase, setPhase] = useState<'idle' | 'out' | 'in'>('idle');
   const swapTimer = useRef(0);
+  const paintFrame = useRef(0);
   const [showLibrary, setShowLibrary] = useState(false);
   const [stream, setStream] = useState<string | null>(null);
   // Bumped when a generated patch lands, so the controls ease in.
@@ -70,15 +72,28 @@ export default function App() {
   };
 
   // Moves between the app and the article by changing the path, so the article can be linked to and the back button works.
-  // The view eases out, swaps, then eases in; it is not a crossfade.
+  // The view eases out, swaps while hidden, and eases in only once the new canvases have painted, so nothing arrives before the visuals.
   const swap = useCallback((article: boolean) => {
     window.clearTimeout(swapTimer.current);
+    cancelAnimationFrame(paintFrame.current);
     setPhase('out');
     swapTimer.current = window.setTimeout(() => {
       setShowArticle(article);
       window.scrollTo(0, 0);
-      setPhase('in');
-      swapTimer.current = window.setTimeout(() => setPhase('idle'), VIEW_EASE_IN);
+      const waitUntil = performance.now() + PAINT_WAIT_MAX;
+      const painted = () => [...document.querySelectorAll<HTMLCanvasElement>('.sim-carousel canvas, .article canvas')].some((canvas) => {
+        try {
+          const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+          for (let i = 3; i < data.length; i += 4) if (data[i]) return true;
+        } catch { /* unreadable canvas: treat as painted */ return true; }
+        return false;
+      });
+      const check = () => {
+        if (!painted() && performance.now() < waitUntil) { paintFrame.current = requestAnimationFrame(check); return; }
+        setPhase('in');
+        swapTimer.current = window.setTimeout(() => setPhase('idle'), VIEW_EASE_IN);
+      };
+      paintFrame.current = requestAnimationFrame(() => requestAnimationFrame(check));
     }, VIEW_EASE_OUT);
   }, []);
   const goTo = useCallback((article: boolean) => {
