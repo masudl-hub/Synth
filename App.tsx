@@ -7,7 +7,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { HStack } from '@astryxdesign/core/HStack';
-import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarRightCollapse, IconRefresh } from '@tabler/icons-react';
+import { IconLayoutSidebarLeftCollapse, IconRefresh } from '@tabler/icons-react';
 import { themes, defaultThemeSlug } from './astryx-themes';
 import { SimCarousel } from './components/SimCarousel';
 import { simulations } from './simulations/logic';
@@ -146,8 +146,8 @@ export default function App() {
           <ToggleButton
             label="Why this exists"
             tooltip={showArticle ? 'Back to the studio' : 'Why this exists'}
-            icon={<IconLayoutSidebarLeftCollapse />}
-            pressedIcon={<IconLayoutSidebarRightCollapse />}
+            // One icon turned half a revolution: its mirror image is the right-collapse glyph.
+            icon={<IconLayoutSidebarLeftCollapse style={{ transform: showArticle ? 'rotate(180deg)' : 'none', transition: 'transform 300ms ease-in-out' }} />}
             isIconOnly
             isPressed={showArticle}
             onPressedChange={goTo}
