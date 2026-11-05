@@ -1,5 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Theme } from '@astryxdesign/core/theme';
+import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { Link } from '@astryxdesign/core/Link';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -19,17 +20,13 @@ import { useGenerativeAudio } from './hooks/useGenerativeAudio';
 import { useAudioAnalyzer } from './hooks/useAudioAnalyzer';
 import { useDynamicFavicon } from './hooks/useDynamicFavicon';
 
-type Source = 'synth' | 'mic' | 'article';
-
-// The top-right button steps through these in order; its icon is the one you're on.
-const SOURCES: { id: Source; icon: React.ReactElement; label: string }[] = [
-  { id: 'synth', icon: <IconDeviceAudioTape />, label: 'AI synth' },
-  { id: 'mic', icon: <IconMicrophone />, label: 'Microphone' },
-  { id: 'article', icon: <IconArticle />, label: 'Article' },
-];
+// The article lives at its own path.
+const ARTICLE_PATH = '/why';
+const isArticlePath = () => window.location.pathname.replace(/\/+$/, '') === ARTICLE_PATH;
 
 export default function App() {
-  const [audioSource, setAudioSource] = useState<Source>('synth');
+  const [audioSource, setAudioSource] = useState<'synth' | 'mic'>('synth');
+  const [showArticle, setShowArticle] = useState(isArticlePath);
   const [showLibrary, setShowLibrary] = useState(false);
   const [stream, setStream] = useState<string | null>(null);
   // Bumped when a generated patch lands, so the controls ease in.
@@ -50,7 +47,7 @@ export default function App() {
   useDynamicFavicon(activeAudioRef);
 
   // Synth time only advances while playing; the mic world is always moving.
-  const shouldTimeAdvance = audioSource !== 'synth' || isPlaying;
+  const shouldTimeAdvance = audioSource === 'mic' || isPlaying;
 
   const onGenerated = useCallback((raw: unknown) => {
     loadGenerated(raw);
@@ -58,19 +55,37 @@ export default function App() {
   }, [loadGenerated]);
 
   // Switching sources stops the music and the mic, but keeps the patch and the thread.
-  const switchSource = (next: Source) => {
+  const listen = (on: boolean) => {
     stopPlayback();
-    setAudioSource(next);
-    if (next === 'mic') void startMic(); else stopMic();
+    setAudioSource(on ? 'mic' : 'synth');
+    if (on) void startMic(); else stopMic();
+    goTo(false);
   };
-  const current = SOURCES.find((s) => s.id === audioSource) ?? SOURCES[0];
-  const following = SOURCES[(SOURCES.indexOf(current) + 1) % SOURCES.length];
+
+  // Moves between the app and the article by changing the path, so the article can be linked to and the back button works.
+  const goTo = useCallback((article: boolean) => {
+    if (article === isArticlePath()) return;
+    window.history.pushState(null, '', article ? ARTICLE_PATH : '/');
+    setShowArticle(article);
+  }, []);
+  useEffect(() => {
+    const onPop = () => setShowArticle(isArticlePath());
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // The article is for reading: no sound plays, and the mic is off.
+  useEffect(() => {
+    if (!showArticle) return;
+    stopPlayback();
+    stopMic();
+  }, [showArticle]);
 
   const startOver = () => {
     clearPatch();
     setStream(null);
     setArrival(0);
     setThread((n) => n + 1);
+    goTo(false);
   };
 
   const entries = useMemo<LibraryEntry[]>(() => [
@@ -95,12 +110,22 @@ export default function App() {
             icon={<IconRefresh />}
             onClick={startOver}
           />
-          <IconButton
-            label={`${current.label}, next: ${following.label}`}
-            tooltip={`${current.label} · click for ${following.label}`}
-            variant="ghost"
-            icon={current.icon}
-            onClick={() => switchSource(following.id)}
+          <ToggleButton
+            label="Why this exists"
+            tooltip="Why this exists"
+            icon={<IconArticle />}
+            isIconOnly
+            isPressed={showArticle}
+            onPressedChange={goTo}
+          />
+          <ToggleButton
+            label={audioSource === 'mic' ? 'Listening with the microphone' : 'AI synth'}
+            tooltip={audioSource === 'mic' ? 'Microphone · click for AI synth' : 'AI synth · click to listen with the microphone'}
+            icon={<IconDeviceAudioTape />}
+            pressedIcon={<IconMicrophone />}
+            isIconOnly
+            isPressed={audioSource === 'mic'}
+            onPressedChange={listen}
           />
         </HStack>
         <VStack gap={0.5} align="center" className="app__header">
@@ -128,14 +153,14 @@ export default function App() {
         <div className="dock">
           <div className="dock__float">
             {/* Both stay mounted: the composer keeps its thread while the mic is on. */}
-            <div hidden={audioSource !== 'synth'} className="dock__slot">
+            <div hidden={audioSource === 'mic'} className="dock__slot">
               <Composer currentPatch={currentPatch} onPatch={onGenerated} onStream={setStream} thread={thread} />
             </div>
             {audioSource === 'mic' && <MicPanel isLive={isMicLive} onStart={startMic} />}
           </div>
         </div>
 
-        {audioSource === 'article' && <Article />}
+        {showArticle && <Article />}
 
         <StreamReadout text={audioSource === 'synth' ? stream : null} />
 

@@ -49,11 +49,9 @@ const P: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 export const Article: React.FC = () => (
   <article className="article" aria-label="About cymatics lab">
-    <VStack gap={0.5} align="center" className="article__header">
-      <Text type="large" weight="semibold">cymatics lab</Text>
-      <Text type="supporting" size="xsm">Generative Audio Physics</Text>
-    </VStack>
     <VStack gap={6} align="start" className="article__column">
+      <Heading level={1} type="display-2" textWrap="balance">Making sound visible, honestly</Heading>
+
       <VStack gap={4} align="start">
         <P>As a teenager, I came across a video on cymatic sand and I was mesmerised. It&rsquo;s introductory physics, sure, but quotidian forces made visible triggered something in my mind, and in the way I think about the world.</P>
         <P>So, I had a bit of time and access to Google&rsquo;s AI Studio, and I thought &ldquo;what if I could recreate these visuals&rdquo;. Not in the way equaliser videos on YouTube did, or actually, maybe including that way, but I wanted other ways, too. Of course, I only knew about cymatic sand so that was my starting point, and the agent was pleasantly eager to explore other patterns with me.</P>
