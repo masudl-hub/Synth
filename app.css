@@ -687,7 +687,7 @@ dialog.astryx-dialog {
 }
 
 /* Parts of a formula that carry a tip. */
-.article [data-tip] {
+.article__formula [data-tip] {
   cursor: help;
   border-radius: var(--radius-1, 2px);
   text-decoration: underline dotted;
@@ -695,7 +695,7 @@ dialog.astryx-dialog {
   text-underline-offset: 0.25em;
 }
 
-.article [data-tip]:hover {
+.article__formula [data-tip]:hover {
   background: var(--color-background-card-raised);
 }
 
