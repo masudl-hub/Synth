@@ -6,6 +6,10 @@ import { PITCH_NAMES } from '../audio/analysis';
 const COLOR_BG = '#09090b';
 const COLOR_STROKE = '#e4e4e7';
 
+/** Several drawings use pixel constants tuned for a full-size tile; the article draws them small, so they shrink to fit. */
+const fitTo = (ctx: CanvasRenderingContext2D, width: number, height: number, reference: number) =>
+  ctx.canvas.dataset.bare ? Math.min(1, Math.min(width, height) / reference) : 1;
+
 // --- HUD Helper ---
 const drawEquationOverlay = (
   ctx: CanvasRenderingContext2D,
@@ -766,6 +770,8 @@ let fluid: FluidState = {
 };
 
 const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+    const fit = fitTo(ctx, width, height, 480);
+    fluid.res = Math.max(5, Math.round(20 * fit));
     const cols = Math.ceil(width / fluid.res);
     const rows = Math.ceil(height / fluid.res);
     
@@ -775,7 +781,7 @@ const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext
         fluid.velX = new Float32Array(cols * rows).fill(0);
         fluid.velY = new Float32Array(cols * rows).fill(0);
         fluid.particles = [];
-        for(let i=0; i<3000; i++) {
+        for(let i=0; i<Math.round(1200 * fit); i++) {
             fluid.particles.push({
                 x: Math.random() * width,
                 y: Math.random() * height,
@@ -855,8 +861,8 @@ const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext
             p.vx += fluid.velX[index] * 0.2;
             p.vy += fluid.velY[index] * 0.2;
         }
-        p.x += p.vx;
-        p.y += p.vy;
+        p.x += p.vx * fit;
+        p.y += p.vy * fit;
         p.vx *= 0.95; 
         p.vy *= 0.95;
         if (p.x < 0) p.x = width;
@@ -866,7 +872,7 @@ const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext
         const speed = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
         const waveIdx = Math.floor(map(p.x, 0, width, 0, audio.waveform.length));
         const waveVal = Math.abs(audio.waveform[waveIdx] / 128 - 1);
-        const size = Math.min(3, Math.max(0.5, speed * 0.5)) + waveVal * 4;
+        const size = (Math.min(3, Math.max(0.5, speed * 0.5)) + waveVal * 4) * Math.max(fit, 0.4);
         const alpha = Math.min(1, speed * 0.2 + 0.1 + audio.volume * 0.5);
         ctx.globalAlpha = alpha;
         ctx.fillRect(p.x, p.y, size, size);
@@ -989,7 +995,7 @@ const drawTonnetz = ({ ctx, width, height, mouse, audio }: SimulationContext) =>
             ctx.arc(x, y, 2 + intensity * size * 0.4 + hover * 5, 0, Math.PI * 2);
             ctx.fill();
 
-            if (intensity > 0.5 || hover > 0.5) {
+            if (!ctx.canvas.dataset.bare && (intensity > 0.5 || hover > 0.5)) {
                 ctx.fillStyle = '#09090b';
                 ctx.fillText(PITCH_NAMES[pc], x, y);
             }
@@ -1055,8 +1061,7 @@ const drawLorenz = ({ ctx, width, height, time, mouse, audio }: SimulationContex
         if (attractorState.points.length > LORENZ_TRAIL) attractorState.points.shift();
     }
 
-    // The attractor is sized for a tile of about 600px; smaller canvases shrink it to fit.
-    const fit = Math.min(1, Math.min(width, height) / 600);
+    const fit = fitTo(ctx, width, height, 300);
 
     ctx.strokeStyle = COLOR_STROKE;
     ctx.lineWidth = 1;

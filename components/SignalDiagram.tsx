@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 
 /* Two ways in, one analyser, thirteen canvases. Colours come from the theme so it follows light and dark. */
@@ -44,6 +44,12 @@ export const SignalDiagram: React.FC = () => {
     setHover(el?.dataset.tip ? { key: el.dataset.tip, box: el.getBoundingClientRect() } : null);
   };
   const tip = hover ? TIPS[hover.key] : undefined;
+  useEffect(() => {
+    if (!hover) return;
+    const close = () => setHover(null);
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [hover]);
 
   return (
   <>

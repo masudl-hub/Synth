@@ -43,7 +43,8 @@ export class SynthEngine {
   private analysisTimer: number | undefined;
   public audioData: AudioFeatures;
 
-  constructor() {
+  /** `silent` keeps the analysers fed but sends nothing to the speakers. */
+  constructor(silent = false) {
     this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
     
     // Graph: Voices -> VoiceOutput -> MasterFilter -> (Sends + Dry) -> MasterGain -> Analyser -> Dest
@@ -106,10 +107,27 @@ export class SynthEngine {
     // Connect Master to Output
     const { lo, hi } = createAnalysers(this.ctx, this.masterGain);
     this.extractor = new FeatureExtractor(lo, hi);
-    this.masterGain.connect(this.ctx.destination);
+    if (silent) {
+      const mute = this.ctx.createGain();
+      mute.gain.value = 0;
+      this.masterGain.connect(mute);
+      mute.connect(this.ctx.destination);
+    } else {
+      this.masterGain.connect(this.ctx.destination);
+    }
     this.audioData = silentFeatures(this.ctx.sampleRate);
     
     this.analysisTimer = window.setInterval(this.loopAnalysis, 16);
+  }
+
+  public get isRunning() {
+    return this.ctx.state === 'running';
+  }
+
+  public dispose() {
+    this.stop();
+    window.clearInterval(this.analysisTimer);
+    void this.ctx.close();
   }
 
   public async resume() {

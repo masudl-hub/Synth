@@ -12,6 +12,8 @@ import { CANVAS_NOTES, Tip } from './articleSections';
 import { simulations } from '../simulations/logic';
 import { useCanvas } from '../hooks/useCanvas';
 import { demoFeatures } from '../audio/demo';
+import { SynthEngine } from '../audio/SynthEngine';
+import { PORCELAIN_BEATS } from '../audio/porcelainBeats';
 import { AudioFeatures, SimulationDef } from '../types';
 
 /** A displayed formula whose marked parts show their tip on hover, focus or tap. */
@@ -28,6 +30,13 @@ const Formula: React.FC<{ latex: string; tips: Record<string, Tip> }> = ({ latex
     setHover(el?.dataset.tip ? { key: el.dataset.tip, box: el.getBoundingClientRect() } : null);
   };
   const tip = hover ? tips[hover.key] : undefined;
+  // The part scrolls away from a resting pointer without a mouse event, so scrolling closes the tip.
+  useEffect(() => {
+    if (!hover) return;
+    const close = () => setHover(null);
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [hover]);
 
   return (
     <>
@@ -69,17 +78,35 @@ const Shapes: React.FC<{ sim: SimulationDef; audioDataRef: React.MutableRefObjec
 };
 
 export const Article: React.FC = () => {
-  // The article plays no sound, so the canvases are fed a held chord; Phase and the others would be blank on silence.
+  // The canvases are fed Porcelain Beats played silently through the real analyser. Until the browser lets audio start,
+  // a soft held tone stands in.
   const audioDataRef = useRef<AudioFeatures>(demoFeatures(0));
   useEffect(() => {
+    const engine = new SynthEngine(true);
+    engine.loadPatch(PORCELAIN_BEATS);
+    let started = false;
+    const start = () => {
+      void engine.resume().then(() => {
+        if (engine.isRunning && !started) { started = true; engine.start(); }
+      });
+    };
+    start();
+    window.addEventListener('pointerdown', start);
+    window.addEventListener('keydown', start);
     let frame = 0;
-    const start = performance.now();
+    const origin = performance.now();
     const tick = () => {
-      demoFeatures((performance.now() - start) / 1000, audioDataRef.current);
+      if (started) audioDataRef.current = engine.audioData;
+      else demoFeatures((performance.now() - origin) / 1000, audioDataRef.current);
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('pointerdown', start);
+      window.removeEventListener('keydown', start);
+      engine.dispose();
+    };
   }, []);
 
   return (
