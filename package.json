@@ -17,6 +17,7 @@
     "@theoremjs/agents": "^0.3.4-next.845.g08954d1",
     "@theoremjs/react": "^0.3.4-next.845.g08954d1",
     "@theoremjs/web": "^0.3.4-next.845.g08954d1",
+    "katex": "^0.16.11",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "zod": "^4.6.7"

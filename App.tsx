@@ -1,17 +1,17 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Theme } from '@astryxdesign/core/theme';
-import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { Link } from '@astryxdesign/core/Link';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { HStack } from '@astryxdesign/core/HStack';
-import { IconDeviceAudioTape, IconMicrophone, IconRefresh } from '@tabler/icons-react';
+import { IconArticle, IconDeviceAudioTape, IconMicrophone, IconRefresh } from '@tabler/icons-react';
 import { themes, defaultThemeSlug } from './astryx-themes';
 import { SimCarousel } from './components/SimCarousel';
 import { ControlStrip } from './components/ControlStrip';
 import { Composer } from './components/Composer';
+import { Article } from './components/Article';
 import { MicPanel } from './components/MicPanel';
 import { Library, LibraryEntry } from './components/Library';
 import { StreamReadout } from './components/StreamReadout';
@@ -19,8 +19,17 @@ import { useGenerativeAudio } from './hooks/useGenerativeAudio';
 import { useAudioAnalyzer } from './hooks/useAudioAnalyzer';
 import { useDynamicFavicon } from './hooks/useDynamicFavicon';
 
+type Source = 'synth' | 'mic' | 'article';
+
+// The top-right button steps through these in order; its icon is the one you're on.
+const SOURCES: { id: Source; icon: React.ReactElement; label: string }[] = [
+  { id: 'synth', icon: <IconDeviceAudioTape />, label: 'AI synth' },
+  { id: 'mic', icon: <IconMicrophone />, label: 'Microphone' },
+  { id: 'article', icon: <IconArticle />, label: 'Article' },
+];
+
 export default function App() {
-  const [audioSource, setAudioSource] = useState<'synth' | 'mic'>('synth');
+  const [audioSource, setAudioSource] = useState<Source>('synth');
   const [showLibrary, setShowLibrary] = useState(false);
   const [stream, setStream] = useState<string | null>(null);
   // Bumped when a generated patch lands, so the controls ease in.
@@ -41,7 +50,7 @@ export default function App() {
   useDynamicFavicon(activeAudioRef);
 
   // Synth time only advances while playing; the mic world is always moving.
-  const shouldTimeAdvance = audioSource === 'mic' || isPlaying;
+  const shouldTimeAdvance = audioSource !== 'synth' || isPlaying;
 
   const onGenerated = useCallback((raw: unknown) => {
     loadGenerated(raw);
@@ -49,11 +58,13 @@ export default function App() {
   }, [loadGenerated]);
 
   // Switching sources stops the music and the mic, but keeps the patch and the thread.
-  const listen = (on: boolean) => {
+  const switchSource = (next: Source) => {
     stopPlayback();
-    setAudioSource(on ? 'mic' : 'synth');
-    if (on) void startMic(); else stopMic();
+    setAudioSource(next);
+    if (next === 'mic') void startMic(); else stopMic();
   };
+  const current = SOURCES.find((s) => s.id === audioSource) ?? SOURCES[0];
+  const following = SOURCES[(SOURCES.indexOf(current) + 1) % SOURCES.length];
 
   const startOver = () => {
     clearPatch();
@@ -84,14 +95,12 @@ export default function App() {
             icon={<IconRefresh />}
             onClick={startOver}
           />
-          <ToggleButton
-            label={audioSource === 'mic' ? 'Listening with the microphone' : 'AI synth'}
-            tooltip={audioSource === 'mic' ? 'Microphone · click for AI synth' : 'AI synth · click to listen with the microphone'}
-            icon={<IconDeviceAudioTape />}
-            pressedIcon={<IconMicrophone />}
-            isIconOnly
-            isPressed={audioSource === 'mic'}
-            onPressedChange={listen}
+          <IconButton
+            label={`${current.label}, next: ${following.label}`}
+            tooltip={`${current.label} · click for ${following.label}`}
+            variant="ghost"
+            icon={current.icon}
+            onClick={() => switchSource(following.id)}
           />
         </HStack>
         <VStack gap={0.5} align="center" className="app__header">
@@ -119,12 +128,14 @@ export default function App() {
         <div className="dock">
           <div className="dock__float">
             {/* Both stay mounted: the composer keeps its thread while the mic is on. */}
-            <div hidden={audioSource === 'mic'} className="dock__slot">
+            <div hidden={audioSource !== 'synth'} className="dock__slot">
               <Composer currentPatch={currentPatch} onPatch={onGenerated} onStream={setStream} thread={thread} />
             </div>
             {audioSource === 'mic' && <MicPanel isLive={isMicLive} onStart={startMic} />}
           </div>
         </div>
+
+        {audioSource === 'article' && <Article />}
 
         <StreamReadout text={audioSource === 'synth' ? stream : null} />
 

@@ -11,7 +11,7 @@ interface TileProps {
   isFeatured: boolean;
 }
 
-const FIDELITY_LABEL: Record<SimulationDef['fidelity'], string> = {
+export const FIDELITY_LABEL: Record<SimulationDef['fidelity'], string> = {
   computes: 'Computes',
   idealised: 'Idealised',
   inspired: 'Inspired by',

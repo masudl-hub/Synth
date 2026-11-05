@@ -387,6 +387,7 @@ dialog.astryx-dialog {
 }
 
 .app__toggle {
+  z-index: 6;
   position: absolute;
   top: var(--spacing-4);
   right: var(--spacing-4);
@@ -616,4 +617,61 @@ dialog.astryx-dialog {
 .sim-tile__ref {
   max-width: min(22rem, 60vw);
   opacity: 0.7;
+}
+
+/* Article: a scrolling page over the live canvases, which show dimly behind it. */
+.article {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--color-background-body) 90%, transparent);
+  backdrop-filter: blur(8px);
+  padding: calc(2 * var(--spacing-12)) 0 calc(4 * var(--spacing-12));
+}
+
+.article__column {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 var(--spacing-4);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.article__p {
+  max-width: 36rem;
+  line-height: 1.7;
+}
+
+.article__kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.article__diagram {
+  width: 100%;
+  height: auto;
+  margin-top: var(--spacing-2);
+}
+
+.article__canvas {
+  width: 100%;
+  padding-top: var(--spacing-8);
+  border-top: 1px solid var(--color-border);
+}
+
+.article__formula {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--spacing-2) 0;
+}
+
+.article .katex-display {
+  margin: 0;
+}
+
+.article__symbols {
+  max-width: 34rem;
 }
