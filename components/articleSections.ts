@@ -63,7 +63,7 @@ export const CANVAS_NOTES: CanvasNote[] = [
   },
   {
     title: 'Array',
-    plain: 'Chladni\'s sand. Grains slide downhill on the plate\'s vibration until they reach the lines that don\'t move, and there they stay. That is the pattern from the video that started all of this.',
+    plain: 'Chladni\'s sand. Grains slide downhill on the plate\'s vibration until they reach the lines that don\'t move, and there they stay.',
     latex: '\\mathbf{F}=-\\nabla\\,\\bigl|z(x,y)\\bigr|',
     symbols: [
       ['z(x,y)', 'how hard the plate shakes at each point'],

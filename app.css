@@ -625,8 +625,7 @@ dialog.astryx-dialog {
   inset: 0;
   z-index: 5;
   overflow-y: auto;
-  background: color-mix(in srgb, var(--color-background-body) 90%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--color-background-body);
   padding: calc(2 * var(--spacing-12)) 0 calc(4 * var(--spacing-12));
 }
 
@@ -635,7 +634,7 @@ dialog.astryx-dialog {
   margin: 0 auto;
   padding: 0 var(--spacing-4);
   box-sizing: border-box;
-  text-align: center;
+  text-align: left;
 }
 
 .article__p {
@@ -648,7 +647,12 @@ dialog.astryx-dialog {
   letter-spacing: 0.12em;
 }
 
+.article__how {
+  width: 100%;
+}
+
 .article__diagram {
+  display: block;
   width: 100%;
   height: auto;
   margin-top: var(--spacing-2);
@@ -662,6 +666,7 @@ dialog.astryx-dialog {
 
 .article__formula {
   display: block;
+  text-align: left;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
@@ -670,6 +675,10 @@ dialog.astryx-dialog {
 
 .article .katex-display {
   margin: 0;
+}
+
+.article .katex-display > .katex {
+  text-align: left;
 }
 
 .article__symbols {
