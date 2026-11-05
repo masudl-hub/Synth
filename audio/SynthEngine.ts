@@ -175,6 +175,11 @@ export class SynthEngine {
       if (this.currentPatch) this.currentPatch = { ...this.currentPatch, oscillator: { ...this.currentPatch.oscillator, type } };
   }
 
+  /** The patch's own filter cutoff. Notes not yet played use it; the ones sounding finish as they were. */
+  public setPatchFilterFreq(freq: number) {
+      if (this.currentPatch) this.currentPatch = { ...this.currentPatch, filter: { ...this.currentPatch.filter, frequency: freq } };
+  }
+
   public setBPM(bpm: number) {
       if (this.currentPatch) {
           this.currentPatch.bpm = Math.max(20, Math.min(300, bpm));

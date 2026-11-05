@@ -117,7 +117,8 @@ export const useGenerativeAudio = () => {
   // Mixer State
   const [bpm, setBpm] = useState(120);
   const [volume, setVolume] = useState(0.4);
-  const [filterFreq, setFilterFreq] = useState(20000);
+  // The Filter slider is the patch's own cutoff, so it follows whichever patch is loaded.
+  const filterFreq = currentPatch?.filter.frequency ?? 20000;
   
   // Library State
   const [savedPatches, setSavedPatches] = useState<SynthPatch[]>([]);
@@ -297,8 +298,8 @@ export const useGenerativeAudio = () => {
   };
 
   const updateFilter = (val: number) => {
-      setFilterFreq(val);
-      synthRef.current?.setFilterFreq(val);
+      setCurrentPatch((p) => (p ? { ...p, filter: { ...p.filter, frequency: val } } : p));
+      synthRef.current?.setPatchFilterFreq(val);
   };
 
   // Library Actions

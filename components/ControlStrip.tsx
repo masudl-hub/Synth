@@ -134,7 +134,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
             </HStack>
             <HStack gap={2} align="center" className="strip__slider">
               <Text type="supporting" size="xsm">Filter</Text>
-              <Slider label="Filter" isLabelHidden containerClassName="strip__field" min={0} max={1} step={0.005} value={toLog(filterFreq)}
+              <Slider label="Filter" isLabelHidden containerClassName="strip__field" min={0} max={1} step={0.005} value={Math.min(1, Math.max(0, toLog(filterFreq)))}
                 onChange={(t) => updateFilter(Math.round(fromLog(t)))}
                 formatValue={(t) => `${Math.round(fromLog(t))} Hz`} />
             </HStack>
