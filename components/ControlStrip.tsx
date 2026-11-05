@@ -11,7 +11,8 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { IconActivity, IconBell, IconBooks, IconCode, IconPiano, IconPlayerPause, IconPlayerPlay, IconTriangle, IconWaveSawTool, IconWaveSine, IconWaveSquare } from '@tabler/icons-react';
 import { JsonEditor } from './JsonEditor';
 import { PARAM_DOCS } from './paramDocs';
-import { SynthPatch } from '../types';
+import { SynthPatch, WaveShape } from '../types';
+import { focusPart } from '../audio/patch';
 
 interface ControlStripProps {
   currentPatch: SynthPatch | null;
@@ -22,7 +23,7 @@ interface ControlStripProps {
   filterFreq: number; updateFilter: (v: number) => void;
   onCycleOscillator: (type: OscillatorShape) => void;
   onOpenLibrary: () => void;
-  onUpdatePatch: (patch: SynthPatch, playOnLoad: boolean) => void;
+  onUpdatePatch: (patch: unknown, playOnLoad: boolean) => void;
   /** Keeps the strip's space while hidden, so the page never moves. */
   isHidden?: boolean;
   /** Changes when a new patch arrives; the strip eases in again. */
@@ -30,7 +31,7 @@ interface ControlStripProps {
 }
 
 // The wave shapes in the order the button steps through them; its icon is the shape it's on.
-type OscillatorShape = SynthPatch['oscillator']['type'];
+type OscillatorShape = WaveShape;
 const SHAPES: { type: OscillatorShape; icon: React.ReactElement }[] = [
   { type: 'sine', icon: <IconWaveSine /> },
   { type: 'triangle', icon: <IconTriangle /> },
@@ -80,7 +81,7 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
   };
 
   const cap = (word: string) => word[0].toUpperCase() + word.slice(1);
-  const current = currentPatch?.oscillator.type ?? 'sine';
+  const current = currentPatch ? currentPatch[focusPart(currentPatch)].oscillator.type : 'sine';
   const next = SHAPES[(SHAPES.findIndex((s) => s.type === current) + 1) % SHAPES.length];
 
   const description = currentPatch?.description ?? '';

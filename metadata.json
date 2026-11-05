@@ -1,6 +1,6 @@
 {
-  "name": "Audio Physics",
-  "description": "A tactile, interactive exploration of 9 mathematical shape simulations reacting to cursor movement in a monochrome aesthetic.",
+  "name": "Cymatics Lab",
+  "description": "Describe a sound and Gemini writes it as a synth patch. The browser plays it, and thirteen canvases draw it with real maths, each labelled with how much of it is real physics.",
   "requestFramePermissions": [
     "microphone"
   ]

@@ -15,7 +15,7 @@ import { useCanvas } from '../hooks/useCanvas';
 import { demoFeatures } from '../audio/demo';
 import { SynthEngine } from '../audio/SynthEngine';
 import { PORCELAIN_BEATS } from '../audio/porcelainBeats';
-import { AudioFeatures, SimulationDef } from '../types';
+import { AudioFeatures, Instrument, SimulationDef } from '../types';
 
 /** A displayed formula whose marked parts show their tip on hover, focus or tap. */
 const Formula: React.FC<{ latex: string; tips: Record<string, Tip> }> = ({ latex, tips }) => {
@@ -24,13 +24,36 @@ const Formula: React.FC<{ latex: string; tips: Record<string, Tip> }> = ({ latex
     [latex],
   );
   // The hovered part's box, so the tooltip anchors to an invisible marker laid over it.
-  const [hover, setHover] = useState<{ key: string; box: DOMRect } | null>(null);
+  const [hover, setHover] = useState<{ key: string; box: DOMRect; el: HTMLElement } | null>(null);
 
-  const show = (e: React.SyntheticEvent) => {
+  // KaTeX lays struts and stacked boxes around each part that reach far past its glyphs, so the part's own box
+  // catches the pointer where nothing is drawn. Only the glyphs count: the tip shows while the pointer is on one.
+  const glyphBox = (el: HTMLElement, x: number, y: number) => {
+    const rects: DOMRect[] = [];
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+      if (!n.textContent?.trim()) continue;
+      range.selectNodeContents(n);
+      rects.push(...Array.from(range.getClientRects()));
+    }
+    if (!rects.some((r) => x >= r.left && x <= r.right && y >= r.top && y <= r.bottom)) return null;
+    const left = Math.min(...rects.map((r) => r.left)), top = Math.min(...rects.map((r) => r.top));
+    return new DOMRect(left, top, Math.max(...rects.map((r) => r.right)) - left, Math.max(...rects.map((r) => r.bottom)) - top);
+  };
+  const show = (e: React.PointerEvent | React.MouseEvent) => {
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
-    setHover(el?.dataset.tip ? { key: el.dataset.tip, box: el.getBoundingClientRect() } : null);
+    const box = el?.dataset.tip ? glyphBox(el, e.clientX, e.clientY) : null;
+    const key = el?.dataset.tip;
+    setHover((h) => (box && key && el ? (h?.el === el ? h : { key, box, el }) : null));
   };
   const tip = hover ? tips[hover.key] : undefined;
+  // The part lights up with its tip, rather than on :hover, which would follow KaTeX's oversized boxes.
+  useEffect(() => {
+    if (!hover) return;
+    hover.el.dataset.active = '';
+    return () => { delete hover.el.dataset.active; };
+  }, [hover]);
   // The part scrolls away from a resting pointer without a mouse event, so scrolling closes the tip.
   useEffect(() => {
     if (!hover) return;
@@ -43,8 +66,8 @@ const Formula: React.FC<{ latex: string; tips: Record<string, Tip> }> = ({ latex
     <>
       <span
         className="article__formula"
-        onMouseOver={show}
-        onMouseLeave={() => setHover(null)}
+        onPointerMove={show}
+        onPointerLeave={() => setHover(null)}
         onClick={show}
         dangerouslySetInnerHTML={{ __html: html }}
       />
@@ -85,12 +108,12 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
   useEffect(() => {
     const engine = new SynthEngine(true);
     // The tiles are small, so the beat is calmer here: slower, darker and quieter than the preset.
-    engine.loadPatch({
-      ...PORCELAIN_BEATS,
-      bpm: 64,
-      filter: { ...PORCELAIN_BEATS.filter, frequency: 900, q: 1.5, envAmount: 1 },
-      lfo: PORCELAIN_BEATS.lfo && { ...PORCELAIN_BEATS.lfo, rate: 1.5, depth: 0.06 },
+    const calm = (part: Instrument): Instrument => ({
+      ...part,
+      filter: { ...part.filter, frequency: 900, q: 1.5, envAmount: 1 },
+      lfo: part.lfo && { ...part.lfo, rate: 1.5, depth: 0.06 },
     });
+    engine.loadPatch({ ...PORCELAIN_BEATS, bpm: 64, lead: calm(PORCELAIN_BEATS.lead), bass: calm(PORCELAIN_BEATS.bass) });
     engine.setFilterFreq(700);
     engine.setVolume(0.25);
     let started = false;
@@ -137,6 +160,7 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
       </VStack>
 
       <Heading level={2}>The thirteen canvases</Heading>
+      <P>Most canvases also answer the pointer: moving it pushes, tilts or stirs the picture. That is there for play and is not part of any formula below.</P>
 
       {CANVAS_NOTES.map((note, i) => {
         const sim = simulations.find((s) => s.title === note.title);

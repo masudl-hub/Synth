@@ -50,17 +50,17 @@ const drawEquationOverlay = (
 const META = {
   ridge: {
     title: "Ridge", description: "Waterfall Spectrogram", fidelity: "computes" as const,
-    reference: "Allen & Rabiner, Proc. IEEE 65(11), 1558–1564, 1977",
+    reference: "Koenig, Dunn & Lacy, J. Acoust. Soc. Am. 18(1), 19–49, 1946; Allen & Rabiner, Proc. IEEE 65(11), 1558–1564, 1977",
     formula: "L(t,f) = dB-mapped |STFT{x}(t,f)|",
   },
   holo: {
     title: "Holo", description: "Spherical Harmonic Surface", fidelity: "inspired" as const,
-    reference: "Lamb, Proc. London Math. Soc. 13, 189–212, 1882 (modes of a sphere)",
+    reference: "Lamb, Proc. London Math. Soc. 13, 189–212, 1882 (vibrations of an elastic sphere)",
     formula: "r = R + A·Yₗᵐ(θ,φ) + w(φ)",
   },
   warp: {
     title: "Warp", description: "Idealised Chladni Pattern", fidelity: "idealised" as const,
-    reference: "Chladni, Entdeckungen über die Theorie des Klanges, 1787",
+    reference: "Chladni, Entdeckungen über die Theorie des Klanges, 1787; Ritz, Ann. Phys. 333(4), 737–786, 1909 (exact modes)",
     formula: "z = cos(nπx)cos(mπy) − cos(mπx)cos(nπy)",
   },
   strata: {
@@ -75,13 +75,13 @@ const META = {
   },
   twist: {
     title: "Twist", description: "Ideal String Standing Wave", fidelity: "idealised" as const,
-    reference: "Melde, Ann. Phys. Chem. 109, 193–215, 1859",
+    reference: "Melde, Ann. Phys. Chem. 109, 193–215, 1860",
     formula: "y = A sin(nπx/L) cos(nω₁t + φᵢ) + w(x)",
   },
   swarm: {
     title: "Swarm", description: "Lissajous Particles", fidelity: "idealised" as const,
     reference: "Lissajous, Ann. chim. phys. 51, 147–231, 1857",
-    formula: "x = A sin(a(t+φ)+φ),  y = A sin(b(t+φ))",
+    formula: "x = A sin(a(t+φ)+δ),  y = A sin(b(t+φ)),  δ = π/2",
   },
   hive: {
     title: "Hive", description: "Radial Wave on a Hex Grid", fidelity: "inspired" as const,
@@ -90,12 +90,12 @@ const META = {
   },
   phase: {
     title: "Phase", description: "Delay-Embedded Waveform", fidelity: "computes" as const,
-    reference: "Takens, Lecture Notes in Math. 898, 366–381, 1981",
-    formula: "(x[n], x[n+τ]),  τ = fs / 4f₀",
+    reference: "Takens, Lecture Notes in Math. 898, 366–381, 1981; Fraser & Swinney, Phys. Rev. A 33, 1134–1140, 1986",
+    formula: "(x[n], x[n+τ]),  τ = fs / 4f_pk",
   },
   fluid: {
     title: "Fluid", description: "Velocity Field Particles", fidelity: "inspired" as const,
-    reference: "Stam, Stable Fluids, SIGGRAPH 1999, 121–128 (diffusion step only)",
+    reference: "Stam, Stable Fluids, SIGGRAPH 1999, 121–128 (diffusion idea only, solved explicitly)",
     formula: "∂u/∂t = ν∇²u − γu + F",
   },
   vector: {
@@ -104,7 +104,7 @@ const META = {
     formula: "r = R + g·|X(f)|",
   },
   lattice: {
-    title: "Lattice", description: "Euler Tonnetz", fidelity: "computes" as const,
+    title: "Lattice", description: "Tonnetz", fidelity: "computes" as const,
     reference: "Euler, Tentamen novae theoriae musicae, 1739; Cohn, J. Music Theory 41, 1997",
     formula: "pc(i,j) = (7i + 4j) mod 12",
   },
@@ -426,7 +426,7 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
   ctx.globalAlpha = 1;
 
   drawEquationOverlay(ctx, width, height, META.strata.formula, {
-      A: audio.volume,
+      V: audio.volume,
       T: audio.treble
   });
 };
@@ -600,7 +600,7 @@ const drawParticles = ({ ctx, width, height, time, mouse, audio }: SimulationCon
     const baseAmp = Math.min(width, height) * 0.35;
     const Amp = baseAmp * (0.5 + audio.volume * 0.8);
     
-    let x = cx + Amp * Math.sin(f1 * (time + phase) + phase);
+    let x = cx + Amp * Math.sin(f1 * (time + phase) + Math.PI / 2);
     let y = cy + Amp * Math.sin(f2 * (time + phase));
     
     // Removed random explosion.
@@ -736,7 +736,7 @@ const drawPhaseSpace = ({ ctx, width, height, mouse, audio }: SimulationContext)
 
   drawEquationOverlay(ctx, width, height, META.phase.formula, {
       τ: `${delay} smp`,
-      "f₀": `${audio.peakHz.toFixed(0)} Hz`
+      "f_pk": `${audio.peakHz.toFixed(0)} Hz`
   });
 };
 

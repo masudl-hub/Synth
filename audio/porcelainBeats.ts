@@ -1,4 +1,5 @@
 import { DrumEvent, NoteEvent, SynthPatch } from '../types';
+import { oneSound } from './patch';
 
 /** [freq Hz, startStep, durationSteps, velocity] */
 type Row = [number, number, number, number];
@@ -50,19 +51,21 @@ const drumBars = (): DrumEvent[] => {
 
 export const PORCELAIN_BEATS: SynthPatch = {
   name: 'Porcelain Beats',
-  description: 'Driving and dense E Lydian sequence featuring bell-like inharmonic textures and a punchy drum groove.',
+  description: 'Driving and dense E major sequence with Mixolydian D naturals, bell-like inharmonic FM and a punchy drum groove.',
   bpm: 127,
   totalSteps: 128,
-  oscillator: {
-    type: 'sawtooth', detune: 8, fmAmount: 75, fmRatio: 5.19, fmWave: 'sine',
-    layer: { type: 'square', octave: 1, detune: -5, mix: 0.3 },
-  },
-  lfo: { target: 'filter', rate: 5, depth: 0.25 },
+  ...oneSound({
+    oscillator: {
+      type: 'sawtooth', detune: 8, fmAmount: 75, fmRatio: 5.19, fmWave: 'sine',
+      layer: { type: 'square', octave: 1, detune: -5, mix: 0.3 },
+    },
+    lfo: { target: 'filter', rate: 5, depth: 0.25 },
+    filter: { type: 'lowpass', frequency: 2200, q: 8, envAmount: 3 },
+    envelope: { attack: 0.02, decay: 0.3, sustain: 0.2, release: 0.4 },
+  }),
   drums: drumBars(),
-  filter: { type: 'lowpass', frequency: 2200, q: 8, envAmount: 3 },
-  envelope: { attack: 0.02, decay: 0.3, sustain: 0.2, release: 0.4 },
   delay: { time: 0.3, feedback: 0.3, mix: 0 },
-  reverb: { decay: 4.5, mix: 0.5, tone: 0.7 },
+  reverb: { decay: 2.4, mix: 0.5, tone: 0.7 },
   melody: notes(MELODY),
   bassline: notes(BASS),
 };

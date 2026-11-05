@@ -3,7 +3,8 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { IconCheck, IconPlus, IconTrash } from '@tabler/icons-react';
-import { SynthPatch } from '../types';
+import { SynthPatch, WaveShape } from '../types';
+import { focusPart } from '../audio/patch';
 
 export interface LibraryEntry {
   patch: SynthPatch;
@@ -22,7 +23,7 @@ interface LibraryProps {
   onDelete: (savedIndex: number) => void;
 }
 
-type Osc = SynthPatch['oscillator']['type'];
+type Osc = WaveShape;
 
 /** Two periods of each waveform, built from exact points so the shapes read cleanly. */
 const WAVES: Record<Osc, string> = {
@@ -65,7 +66,7 @@ export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurre
       </Tooltip>
     </div>
     {entries.map(({ patch, savedIndex }, i) => {
-      const osc = patch.oscillator.type;
+      const osc = patch[focusPart(patch)].oscillator.type;
       return (
         <div
           key={`${patch.name}-${i}`}

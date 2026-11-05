@@ -1,4 +1,5 @@
 import { NoteEvent, SynthPatch } from '../types';
+import { oneSound } from './patch';
 
 /** [freq Hz, startStep, durationSteps, velocity] */
 type Row = [number, number, number, number];
@@ -47,11 +48,13 @@ export const DEFAULT_PATCH: SynthPatch = {
   description: "Extended 16-bar dark cinematic journey with evolving phrases and heavy bass.",
   bpm: 100,
   totalSteps: 256,
-  oscillator: { type: "sawtooth", detune: 7, fmAmount: 65, fmRatio: 1.414 },
-  filter: { type: "lowpass", frequency: 800, q: 8.5, envAmount: 2.5 },
-  envelope: { attack: 0.05, decay: 0.4, sustain: 0.2, release: 0.6 },
+  ...oneSound({
+    oscillator: { type: "sawtooth", detune: 7, fmAmount: 65, fmRatio: 1.414 },
+    filter: { type: "lowpass", frequency: 800, q: 8.5, envAmount: 2.5 },
+    envelope: { attack: 0.05, decay: 0.4, sustain: 0.2, release: 0.6 },
+  }),
   delay: { time: 0.3, feedback: 0.55, mix: 0.4 },
-  reverb: { decay: 4.5, mix: 0.5 },
+  reverb: { decay: 2.4, mix: 0.5 },
   melody: notes(MELODY),
   bassline: notes(BASS),
 };
