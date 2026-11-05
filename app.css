@@ -735,3 +735,21 @@ dialog.astryx-dialog {
   position: fixed;
   pointer-events: none;
 }
+
+/* Moving between the studio and the article: ease out, swap, ease in. */
+.sim-carousel, .article { transition: none; }
+.app[data-phase='out'] .sim-carousel, .app[data-phase='out'] .article {
+  opacity: 0; transform: translateY(0.5rem);
+  transition: opacity 220ms ease-out, transform 220ms ease-out;
+}
+.app[data-phase='in'] .sim-carousel, .app[data-phase='in'] .article {
+  animation: view-in 320ms ease-in-out both;
+}
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app[data-phase='out'] .sim-carousel, .app[data-phase='out'] .article { transition: none; }
+  .app[data-phase='in'] .sim-carousel, .app[data-phase='in'] .article { animation: none; }
+}

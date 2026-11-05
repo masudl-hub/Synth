@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Theme } from '@astryxdesign/core/theme';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { Link } from '@astryxdesign/core/Link';
@@ -23,6 +23,8 @@ import { useDynamicFavicon } from './hooks/useDynamicFavicon';
 
 // The article lives at its own path.
 const ARTICLE_PATH = '/why';
+const VIEW_EASE_OUT = 220;
+const VIEW_EASE_IN = 320;
 const isArticlePath = () => window.location.pathname.replace(/\/+$/, '') === ARTICLE_PATH;
 
 export default function App() {
@@ -30,6 +32,8 @@ export default function App() {
   const [showArticle, setShowArticle] = useState(isArticlePath);
   // Opens on Swarm, wherever it sits in the loop; kept here so the carousel keeps its place while the article is open.
   const [activeSim, setActiveSim] = useState(() => Math.max(0, simulations.findIndex((sim) => sim.title === 'Swarm')));
+  const [phase, setPhase] = useState<'idle' | 'out' | 'in'>('idle');
+  const swapTimer = useRef(0);
   const [showLibrary, setShowLibrary] = useState(false);
   const [stream, setStream] = useState<string | null>(null);
   // Bumped when a generated patch lands, so the controls ease in.
@@ -66,16 +70,27 @@ export default function App() {
   };
 
   // Moves between the app and the article by changing the path, so the article can be linked to and the back button works.
+  // The view eases out, swaps, then eases in; it is not a crossfade.
+  const swap = useCallback((article: boolean) => {
+    window.clearTimeout(swapTimer.current);
+    setPhase('out');
+    swapTimer.current = window.setTimeout(() => {
+      setShowArticle(article);
+      window.scrollTo(0, 0);
+      setPhase('in');
+      swapTimer.current = window.setTimeout(() => setPhase('idle'), VIEW_EASE_IN);
+    }, VIEW_EASE_OUT);
+  }, []);
   const goTo = useCallback((article: boolean) => {
     if (article === isArticlePath()) return;
     window.history.pushState(null, '', article ? ARTICLE_PATH : '/');
-    setShowArticle(article);
-  }, []);
+    swap(article);
+  }, [swap]);
   useEffect(() => {
-    const onPop = () => setShowArticle(isArticlePath());
+    const onPop = () => swap(isArticlePath());
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, []);
+  }, [swap]);
   // The article is for reading: no sound plays, and the mic is off.
   useEffect(() => {
     if (!showArticle) return;
@@ -104,7 +119,7 @@ export default function App() {
 
   return (
     <Theme theme={themes[defaultThemeSlug]} mode="dark">
-      <main className="app">
+      <main className="app" data-phase={phase}>
         <HStack gap={1} align="center" className="app__toggle">
           <IconButton
             label="Start over"

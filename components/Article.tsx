@@ -85,9 +85,14 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
   useEffect(() => {
     const engine = new SynthEngine(true);
     // The tiles are small, so the beat is calmer here: slower, darker and quieter than the preset.
-    engine.loadPatch({ ...PORCELAIN_BEATS, bpm: 90 });
-    engine.setFilterFreq(1200);
-    engine.setVolume(0.4);
+    engine.loadPatch({
+      ...PORCELAIN_BEATS,
+      bpm: 64,
+      filter: { ...PORCELAIN_BEATS.filter, frequency: 900, q: 1.5, envAmount: 1 },
+      lfo: PORCELAIN_BEATS.lfo && { ...PORCELAIN_BEATS.lfo, rate: 1.5, depth: 0.06 },
+    });
+    engine.setFilterFreq(700);
+    engine.setVolume(0.25);
     let started = false;
     const start = () => {
       void engine.resume().then(() => {
