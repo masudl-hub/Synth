@@ -1,6 +1,7 @@
-import React, { useMemo, useRef } from 'react';
+import type React from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
-interface JsonEditorProps {
+export interface JsonEditorProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -8,7 +9,18 @@ interface JsonEditorProps {
 }
 
 // Strings, numbers, literals, punctuation. A string followed by a colon is a key.
-const TOKEN = /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}[\],:])|(\/\/.*$|\/\*[\s\S]*?\*\/)/gm;
+const TOKEN =
+  /("(?:\\.|[^"\\])*")(\s*:)?|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|\b(true|false|null)\b|([{}[\],:])|(\/\/.*$|\/\*[\s\S]*?\*\/)/gmu;
+
+// The class for each capture group after the string and its colon, in the order TOKEN lists them.
+const GROUP_CLASS = ['json__num', 'json__lit', 'json__punct', 'json__comment'];
+
+const classOf = ([, str, colon, ...rest]: RegExpMatchArray) => {
+  if (str) {
+    return colon ? 'json__key' : 'json__str';
+  }
+  return GROUP_CLASS[rest.findIndex(Boolean)] ?? '';
+};
 
 function highlight(source: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
@@ -16,13 +28,20 @@ function highlight(source: string): React.ReactNode[] {
   let n = 0;
   for (const m of source.matchAll(TOKEN)) {
     const at = m.index ?? 0;
-    if (at > last) out.push(source.slice(last, at));
-    const [text, str, colon, num, lit, punct, comment] = m;
-    const cls = str ? (colon ? 'json__key' : 'json__str') : num ? 'json__num' : lit ? 'json__lit' : punct ? 'json__punct' : comment ? 'json__comment' : '';
-    out.push(<span key={n++} className={cls}>{text}</span>);
+    if (at > last) {
+      out.push(source.slice(last, at));
+    }
+    const [text] = m;
+    out.push(
+      <span key={n++} className={classOf(m)}>
+        {text}
+      </span>,
+    );
     last = at + text.length;
   }
-  if (last < source.length) out.push(source.slice(last));
+  if (last < source.length) {
+    out.push(source.slice(last));
+  }
   return out;
 }
 
@@ -30,9 +49,20 @@ function highlight(source: string): React.ReactNode[] {
 export const JsonEditor: React.FC<JsonEditorProps> = ({ label, value, onChange, rows = 24 }) => {
   const paint = useRef<HTMLPreElement>(null);
   const nodes = useMemo(() => highlight(value), [value]);
+  const onInput = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value), [onChange]);
+  const onScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (!paint.current) {
+      return;
+    }
+    paint.current.scrollTop = e.currentTarget.scrollTop;
+    paint.current.scrollLeft = e.currentTarget.scrollLeft;
+  }, []);
   return (
     <div className="json" style={{ ['--rows' as string]: rows }}>
-      <pre ref={paint} className="json__paint" aria-hidden="true">{nodes}{'\n'}</pre>
+      <pre ref={paint} className="json__paint" aria-hidden="true">
+        {nodes}
+        {'\n'}
+      </pre>
       <textarea
         className="json__input"
         aria-label={label}
@@ -41,12 +71,8 @@ export const JsonEditor: React.FC<JsonEditorProps> = ({ label, value, onChange, 
         autoCapitalize="off"
         autoCorrect="off"
         wrap="off"
-        onChange={(e) => onChange(e.target.value)}
-        onScroll={(e) => {
-          if (!paint.current) return;
-          paint.current.scrollTop = e.currentTarget.scrollTop;
-          paint.current.scrollLeft = e.currentTarget.scrollLeft;
-        }}
+        onChange={onInput}
+        onScroll={onScroll}
       />
     </div>
   );

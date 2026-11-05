@@ -61,15 +61,23 @@ body {
   --card: min(100%, 100cqh, 56rem);
   container-type: size;
   outline: none;
+  touch-action: pan-y;
 }
 
 .sim-carousel__slot {
+  /* Each slot is a button; it draws nothing of its own. */
+  display: block;
+  appearance: none;
+  border: 0;
+  text-align: inherit;
   position: absolute;
   top: 50%;
   left: 50%;
   width: min(100cqh, 56rem, 62cqw);
   aspect-ratio: 1;
-  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1), opacity 600ms ease;
+  transition:
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 600ms ease;
   cursor: pointer;
 }
 
@@ -133,7 +141,6 @@ body {
   position: relative;
 }
 
-
 .dock__float {
   position: absolute;
   left: 0;
@@ -176,7 +183,10 @@ body {
 }
 
 @keyframes library-pop {
-  from { opacity: 0; transform: translateY(12px) scale(0.94); }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.94);
+  }
 }
 
 .library__card {
@@ -192,7 +202,10 @@ body {
   border-radius: 20px;
   border: 1px solid var(--color-border);
   background: var(--color-background-card);
-  transition: transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.3), border-color 180ms, background 180ms;
+  transition:
+    transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.3),
+    border-color 180ms,
+    background 180ms;
 }
 
 .library__card:hover {
@@ -200,7 +213,9 @@ body {
   border-color: var(--color-text-secondary, #a1a1aa);
 }
 
-.library__card:active { transform: scale(0.98); }
+.library__card:active {
+  transform: scale(0.98);
+}
 
 /* The save card: a dashed placeholder for the patch that's playing */
 .library__card--save {
@@ -239,7 +254,9 @@ body {
   transition: color 180ms;
 }
 
-.library__card:hover .library__wave { color: var(--color-text-primary, #fafafa); }
+.library__card:hover .library__wave {
+  color: var(--color-text-primary, #fafafa);
+}
 
 .library__wave path {
   fill: none;
@@ -261,7 +278,11 @@ body {
   animation: none;
 }
 
-@keyframes library-draw { to { stroke-dashoffset: 0; } }
+@keyframes library-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
 
 .library__chips {
   display: flex;
@@ -292,10 +313,17 @@ body {
 }
 
 .library__item:hover .library__delete,
-.library__item:focus-within .library__delete { opacity: 1; }
+.library__item:focus-within .library__delete {
+  opacity: 1;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .library__item, .library__wave path { animation: none; stroke-dashoffset: 0; stroke-dasharray: none; }
+  .library__item,
+  .library__wave path {
+    animation: none;
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
 }
 
 .footer {
@@ -303,7 +331,8 @@ body {
 }
 
 /* Reads as plain footer text; only hover shows it's a link */
-.footer__link, .footer__link:visited {
+.footer__link,
+.footer__link:visited {
   font: inherit;
   color: inherit;
   text-decoration: none;
@@ -320,8 +349,9 @@ body {
 
 /* No hairline ring around the dialog */
 dialog.astryx-dialog {
-  box-shadow: none !important;
-  border: 0 !important;
+  /* Astryx's styles sit in cascade layers, so this unlayered rule wins without !important. */
+  box-shadow: none;
+  border: 0;
   outline: none;
 }
 
@@ -379,7 +409,6 @@ dialog.astryx-dialog {
 
 .composer__input textarea {
   box-sizing: border-box;
-  resize: none;
   --line: 1.25rem;
   line-height: var(--line);
   padding-block: calc((var(--size-element-md, 32px) - var(--line)) / 2);
@@ -415,13 +444,6 @@ dialog.astryx-dialog {
   flex: 1 1 24rem;
   min-width: 0;
   height: calc(var(--editor-h) + var(--size-element-md, 32px) + var(--spacing-2));
-}
-
-.patch-editor__source .json {
-  flex: 1;
-  height: auto;
-  min-height: 0;
-  max-height: none;
 }
 
 .patch-editor__docs {
@@ -487,10 +509,6 @@ dialog.astryx-dialog {
   }
 }
 
-.sim-carousel {
-  touch-action: pan-y;
-}
-
 /* Stream readout: the reply as it is written, faint, fixed at the bottom right. */
 .stream {
   position: fixed;
@@ -505,7 +523,12 @@ dialog.astryx-dialog {
   opacity: 0;
   transition: opacity 600ms ease;
   -webkit-mask-image: linear-gradient(to top, #000 55%, transparent);
-  mask-image: linear-gradient(to top, #000 55%, transparent);
+}
+
+@supports (mask-image: none) {
+  .stream {
+    mask-image: linear-gradient(to top, #000 55%, transparent);
+  }
 }
 
 .stream[data-live="true"] {
@@ -533,7 +556,11 @@ dialog.astryx-dialog {
   animation: stream-blink 1s steps(2, start) infinite;
 }
 
-@keyframes stream-blink { to { visibility: hidden; } }
+@keyframes stream-blink {
+  to {
+    visibility: hidden;
+  }
+}
 
 /* A new patch eases in: name first, then the controls. */
 .strip__arrive {
@@ -545,7 +572,10 @@ dialog.astryx-dialog {
 }
 
 @keyframes strip-arrive {
-  from { opacity: 0; transform: translateY(10px); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 
 /* On phones there is no free corner at the bottom, so it floats faintly over the top of the carousel. */
@@ -563,8 +593,13 @@ dialog.astryx-dialog {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .strip__arrive, .stream__caret { animation: none; }
-  .stream { transition: none; }
+  .strip__arrive,
+  .stream__caret {
+    animation: none;
+  }
+  .stream {
+    transition: none;
+  }
 }
 
 /* JSON editor: the textarea's text is transparent; the painted copy underneath carries the colour. */
@@ -580,6 +615,14 @@ dialog.astryx-dialog {
   font-family: var(--font-family-body);
   font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
+}
+
+/* In the patch editor the JSON fills the column, so the buttons never fall off the bottom. */
+.patch-editor__source .json {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  max-height: none;
 }
 
 .json:focus-within {
@@ -605,11 +648,16 @@ dialog.astryx-dialog {
 .json__paint {
   pointer-events: none;
   color: var(--color-text-primary, #fafafa);
-  scrollbar-width: none;
+}
+
+/* Not Baseline everywhere yet, so only where it is supported; elsewhere the painted copy's bar sits under the textarea's. */
+@supports (scrollbar-width: none) {
+  .json__paint {
+    scrollbar-width: none;
+  }
 }
 
 .json__input {
-  resize: none;
   background: transparent;
   color: transparent;
   caret-color: var(--color-text-primary, #fafafa);
@@ -620,12 +668,33 @@ dialog.astryx-dialog {
   background: color-mix(in srgb, var(--color-text-primary, #fafafa) 22%, transparent);
 }
 
-.json__key { color: var(--color-text-primary, #fafafa); }
-.json__str { color: #9fd4a3; }
-.json__num { color: #e6b673; }
-.json__lit { color: #c4a7e7; }
-.json__punct { color: var(--color-text-secondary, #8a8a93); }
-.json__comment { color: var(--color-text-secondary, #8a8a93); font-style: italic; }
+/* Neither textarea is resized by hand: the composer grows with its text and the JSON fills its box. */
+@supports (resize: none) {
+  .composer__input textarea,
+  .json__input {
+    resize: none;
+  }
+}
+
+.json__key {
+  color: var(--color-text-primary, #fafafa);
+}
+.json__str {
+  color: #9fd4a3;
+}
+.json__num {
+  color: #e6b673;
+}
+.json__lit {
+  color: #c4a7e7;
+}
+.json__punct {
+  color: var(--color-text-secondary, #8a8a93);
+}
+.json__comment {
+  color: var(--color-text-secondary, #8a8a93);
+  font-style: italic;
+}
 
 .sim-tile__ref {
   max-width: min(22rem, 60vw);
@@ -698,10 +767,22 @@ dialog.astryx-dialog {
 }
 
 @media (max-width: 40rem) {
-  .article__canvas { flex-direction: column; }
-  .article__canvas-text { flex: none; width: 100%; }
-  .article__formula { font-size: 0.85em; }
-  .article__shapes { width: 100%; max-width: 20rem; height: auto; aspect-ratio: 1; }
+  .article__canvas {
+    flex-direction: column;
+  }
+  .article__canvas-text {
+    flex: none;
+    width: 100%;
+  }
+  .article__formula {
+    font-size: 0.85em;
+  }
+  .article__shapes {
+    width: 100%;
+    max-width: 20rem;
+    height: auto;
+    aspect-ratio: 1;
+  }
 }
 
 .article__formula {
@@ -744,22 +825,36 @@ dialog.astryx-dialog {
 }
 
 /* The studio's controls sit behind the article; hidden outright so they never show through it while it fades. */
-.app[data-view='article'] > :not(.app__toggle, .app__header, .article) { visibility: hidden; }
+.app[data-view="article"] > :not(.app__toggle, .app__header, .article) {
+  visibility: hidden;
+}
 
 /* Moving between the studio and the article: everything but the toggles eases out together, swaps, and eases in together. */
-.app[data-phase='out'] > :not(.app__toggle) {
-  opacity: 0; transform: translateY(0.5rem);
-  transition: opacity 220ms ease-out, transform 220ms ease-out;
+.app[data-phase="out"] > :not(.app__toggle) {
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition:
+    opacity 220ms ease-out,
+    transform 220ms ease-out;
 }
-.app[data-phase='in'] > :not(.app__toggle) {
+.app[data-phase="in"] > :not(.app__toggle) {
   animation: view-in 320ms ease-in-out both;
 }
 @keyframes view-in {
-  from { opacity: 0; transform: translateY(0.5rem); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app[data-phase='out'] > :not(.app__toggle) { transition: none; }
-  .app[data-phase='in'] > :not(.app__toggle) { animation: none; }
+  .app[data-phase="out"] > :not(.app__toggle) {
+    transition: none;
+  }
+  .app[data-phase="in"] > :not(.app__toggle) {
+    animation: none;
+  }
 }
-

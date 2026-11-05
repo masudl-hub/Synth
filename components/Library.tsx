@@ -1,10 +1,11 @@
-import React from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { IconCheck, IconPlus, IconTrash } from '@tabler/icons-react';
-import { SynthPatch, WaveShape } from '../types';
-import { focusPart } from '../audio/patch';
+import type React from 'react';
+import { useCallback } from 'react';
+import { focusPart } from '../audio/patch.ts';
+import type { SynthPatch, WaveShape } from '../types.ts';
 
 export interface LibraryEntry {
   patch: SynthPatch;
@@ -12,7 +13,7 @@ export interface LibraryEntry {
   savedIndex: number | null;
 }
 
-interface LibraryProps {
+export interface LibraryProps {
   entries: LibraryEntry[];
   /** The patch the save card would add, or null when nothing is loaded. */
   currentPatch: SynthPatch | null;
@@ -27,14 +28,22 @@ type Osc = WaveShape;
 
 /** Two periods of each waveform, built from exact points so the shapes read cleanly. */
 const WAVES: Record<Osc, string> = {
-  sine: Array.from({ length: 81 }, (_, i) =>
-    `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - 13 * Math.sin((i / 40) * 2 * Math.PI)).toFixed(2)}`).join(' '),
+  sine: Array.from(
+    { length: 81 },
+    (_, i) => `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - 13 * Math.sin((i / 40) * 2 * Math.PI)).toFixed(2)}`,
+  ).join(' '),
   square: 'M0 20 V7 H30 V33 H60 V7 H90 V33 H120 V20',
   sawtooth: 'M0 20 L15 7 V33 L45 7 V33 L75 7 V33 L105 7 V33 L120 20',
   triangle: 'M0 20 L15 7 L45 33 L75 7 L105 33 L120 20',
   pulse: 'M0 33 V7 H15 V33 H60 V7 H75 V33 H120',
-  organ: Array.from({ length: 81 }, (_, i) => { const t = (i / 40) * 2 * Math.PI; return `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - 8 * (Math.sin(t) + 0.6 * Math.sin(2 * t) + 0.4 * Math.sin(3 * t)) / 1.6).toFixed(2)}`; }).join(' '),
-  bell: Array.from({ length: 81 }, (_, i) => { const t = (i / 40) * 2 * Math.PI; return `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - 9 * (Math.sin(t) + 0.5 * Math.sin(4 * t)) / 1.5).toFixed(2)}`; }).join(' '),
+  organ: Array.from({ length: 81 }, (_, i) => {
+    const t = (i / 40) * 2 * Math.PI;
+    return `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - (8 * (Math.sin(t) + 0.6 * Math.sin(2 * t) + 0.4 * Math.sin(3 * t))) / 1.6).toFixed(2)}`;
+  }).join(' '),
+  bell: Array.from({ length: 81 }, (_, i) => {
+    const t = (i / 40) * 2 * Math.PI;
+    return `${i ? 'L' : 'M'}${(i * 1.5).toFixed(1)} ${(20 - (9 * (Math.sin(t) + 0.5 * Math.sin(4 * t))) / 1.5).toFixed(2)}`;
+  }).join(' '),
 };
 
 /** Patches as colourful cards: a live-drawn waveform, name, and loop length. */
@@ -44,60 +53,97 @@ const barsLabel = (steps: number) => {
   return `${bars} ${bars === 1 ? 'bar' : 'bars'}`;
 };
 
-export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurrentSaved, onSave, onLoad, onDelete }) => (
-  <div className="library" role="list" aria-label="Patch library">
-    <div role="listitem" className="library__item" style={{ ['--i' as string]: 0 }}>
-      <Tooltip content={isCurrentSaved ? 'This patch is already in your library' : 'Save the patch that is playing to your library'}>
-      <button
-        className="library__card library__card--save"
-        onClick={onSave}
-        disabled={!currentPatch || isCurrentSaved}
-      >
-        <span className="library__save-icon" aria-hidden>
-          {isCurrentSaved ? <IconCheck size={20} /> : <IconPlus size={20} />}
-        </span>
-        <span className="library__name">
-          <Text type="label" maxLines={1}>{isCurrentSaved ? 'Saved' : 'Save current patch'}</Text>
-        </span>
-        <span className="library__chips">
-          <span className="library__chip">{currentPatch?.name ?? 'No patch loaded'}</span>
-        </span>
-      </button>
+/** One patch in the grid: load it with the card, and delete it if it is one of yours. */
+const LibraryCard: React.FC<{
+  entry: LibraryEntry;
+  position: number;
+  onLoad: LibraryProps['onLoad'];
+  onDelete: LibraryProps['onDelete'];
+}> = ({ entry: { patch, savedIndex }, position, onLoad, onDelete }) => {
+  const osc = patch[focusPart(patch)].oscillator.type;
+  const load = useCallback(() => onLoad(patch), [onLoad, patch]);
+  const remove = useCallback(() => {
+    if (savedIndex !== null) {
+      onDelete(savedIndex);
+    }
+  }, [onDelete, savedIndex]);
+  return (
+    <li className="library__item" style={{ ['--i' as string]: position }}>
+      <Tooltip content={`Load ${patch.name}`}>
+        <button type="button" className="library__card" onClick={load}>
+          <svg className="library__wave" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden={true}>
+            <path className="midline" d="M0 20 H120" />
+            <path d={WAVES[osc] ?? WAVES.sine} />
+          </svg>
+          <span className="library__name">
+            <Text type="label" maxLines={1}>
+              {patch.name}
+            </Text>
+          </span>
+          <span className="library__chips">
+            <span className="library__chip">{osc}</span>
+            <span className="library__chip">{barsLabel(patch.totalSteps ?? 32)}</span>
+            {savedIndex === null ? null : <span className="library__chip library__chip--mine">saved</span>}
+          </span>
+        </button>
       </Tooltip>
-    </div>
-    {entries.map(({ patch, savedIndex }, i) => {
-      const osc = patch[focusPart(patch)].oscillator.type;
-      return (
-        <div
-          key={`${patch.name}-${i}`}
-          role="listitem"
-          className="library__item"
-          style={{ ['--i' as string]: i + 1 }}
+      {savedIndex === null ? null : (
+        <span className="library__delete">
+          <IconButton
+            label={`Delete ${patch.name}`}
+            tooltip="Delete from your library"
+            size="sm"
+            variant="ghost"
+            icon={<IconTrash />}
+            onClick={remove}
+          />
+        </span>
+      )}
+    </li>
+  );
+};
+
+/** Presets keep their names; saved patches can share a name, so they go by their place in the saved list. */
+const keyOf = ({ patch, savedIndex }: LibraryEntry) =>
+  savedIndex === null ? `preset:${patch.name}` : `saved:${savedIndex}`;
+
+export const Library: React.FC<LibraryProps> = ({
+  entries,
+  currentPatch,
+  isCurrentSaved,
+  onSave,
+  onLoad,
+  onDelete,
+}) => (
+  <ul className="library" aria-label="Patch library">
+    <li className="library__item" style={{ ['--i' as string]: 0 }}>
+      <Tooltip
+        content={
+          isCurrentSaved ? 'This patch is already in your library' : 'Save the patch that is playing to your library'
+        }
+      >
+        <button
+          type="button"
+          className="library__card library__card--save"
+          onClick={onSave}
+          disabled={!currentPatch || isCurrentSaved}
         >
-          <Tooltip content={`Load ${patch.name}`}>
-          <button className="library__card" onClick={() => onLoad(patch)}>
-            <svg className="library__wave" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden>
-              <path className="midline" d="M0 20 H120" />
-              <path d={WAVES[osc] ?? WAVES.sine} />
-            </svg>
-            <span className="library__name">
-              <Text type="label" maxLines={1}>{patch.name}</Text>
-            </span>
-            <span className="library__chips">
-              <span className="library__chip">{osc}</span>
-              <span className="library__chip">{barsLabel(patch.totalSteps ?? 32)}</span>
-              {savedIndex !== null && <span className="library__chip library__chip--mine">saved</span>}
-            </span>
-          </button>
-          </Tooltip>
-          {savedIndex !== null && (
-            <span className="library__delete">
-              <IconButton label={`Delete ${patch.name}`} tooltip="Delete from your library" size="sm" variant="ghost" icon={<IconTrash />}
-                onClick={() => onDelete(savedIndex)} />
-            </span>
-          )}
-        </div>
-      );
-    })}
-  </div>
+          <span className="library__save-icon" aria-hidden={true}>
+            {isCurrentSaved ? <IconCheck size={20} /> : <IconPlus size={20} />}
+          </span>
+          <span className="library__name">
+            <Text type="label" maxLines={1}>
+              {isCurrentSaved ? 'Saved' : 'Save current patch'}
+            </Text>
+          </span>
+          <span className="library__chips">
+            <span className="library__chip">{currentPatch?.name ?? 'No patch loaded'}</span>
+          </span>
+        </button>
+      </Tooltip>
+    </li>
+    {entries.map((entry, i) => (
+      <LibraryCard key={keyOf(entry)} entry={entry} position={i + 1} onLoad={onLoad} onDelete={onDelete} />
+    ))}
+  </ul>
 );

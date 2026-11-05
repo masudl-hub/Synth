@@ -1,0 +1,7 @@
+id: no-lint-suppression
+language: Tsx
+severity: error
+message: Lint suppressions are banned. Fix the code.
+rule:
+  kind: comment
+  regex: "(biome-ignore|fallow-ignore|@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable)"

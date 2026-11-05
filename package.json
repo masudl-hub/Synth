@@ -6,7 +6,16 @@
   "scripts": {
     "dev": "vite build --logLevel warn && (vite build --watch --logLevel warn --emptyOutDir false & wrangler pages dev dist)",
     "build": "vite build",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name audio-physics --branch main"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name audio-physics --branch main",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "lint": "npm run lint:types && npm run lint:biome && npm run lint:ast-grep && npm run lint:fallow",
+    "lint:types": "tsc --noEmit && tsc --noEmit -p functions",
+    "lint:biome": "biome check --error-on-warnings .",
+    "lint:ast-grep": "ast-grep scan --error",
+    "lint:fallow": "fallow dead-code --fail-on-issues && fallow dupes --fail-on-issues && npm run coverage && fallow health --fail-on-issues --coverage coverage/coverage-final.json",
+    "lint:fix": "biome check --write .",
+    "doctor": "astryx doctor --built dist"
   },
   "dependencies": {
     "@astryxdesign/core": "0.7.6",
@@ -23,12 +32,22 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@ast-grep/cli": "0.51.1",
     "@astryxdesign/cli": "0.7.6",
+    "@biomejs/biome": "2.6.5",
     "@cloudflare/workers-types": "^5.20261103.1",
+    "@testing-library/react": "16.3.0",
+    "@types/katex": "0.16.8",
     "@types/node": "^22.14.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "4.0.8",
+    "fallow": "3.39.0",
+    "happy-dom": "20.0.10",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
+    "vitest": "4.0.8",
     "wrangler": "^4.157.0"
   }
 }

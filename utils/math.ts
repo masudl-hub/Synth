@@ -1,20 +1,10 @@
-export const lerp = (start: number, end: number, t: number) => {
-  return start * (1 - t) + end * t;
-};
+export const lerp = (start: number, end: number, t: number) => start * (1 - t) + end * t;
 
-export const dist = (x1: number, y1: number, x2: number, y2: number) => {
-  return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-};
+export const dist = (x1: number, y1: number, x2: number, y2: number) => Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 
-export const map = (
-  value: number,
-  start1: number,
-  stop1: number,
-  start2: number,
-  stop2: number
-) => {
-  return start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
-};
+/** Maps `value` linearly from the range `[start1, stop1]` onto `[start2, stop2]`. */
+export const map = (value: number, [start1, stop1]: [number, number], [start2, stop2]: [number, number]) =>
+  start2 + (stop2 - start2) * ((value - start1) / (stop1 - start1));
 
 // 3D Point Interface
 export interface Point3D {
@@ -28,9 +18,7 @@ export const project = (
   x: number,
   y: number,
   z: number,
-  width: number,
-  height: number,
-  fov: number = 300
+  { width, height, fov = 300 }: { width: number; height: number; fov?: number },
 ) => {
   const scale = fov / (fov + z);
   const x2d = x * scale + width / 2;

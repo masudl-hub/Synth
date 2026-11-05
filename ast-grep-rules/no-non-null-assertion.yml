@@ -1,0 +1,6 @@
+id: no-non-null-assertion
+language: Tsx
+severity: error
+message: Non-null assertions (!) are banned. Handle the null case.
+rule:
+  kind: non_null_expression

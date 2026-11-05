@@ -1,22 +1,21 @@
-
 export interface Point {
   x: number;
   y: number;
 }
 
 export interface AudioFeatures {
-  volume: number;   // RMS level, -60..0 dBFS mapped to 0..1
-  bass: number;     // 20-250 Hz band level, 0..1 (dB-mapped bytes)
-  mid: number;      // 250-4000 Hz band level, 0..1
-  treble: number;   // 4-20 kHz band level, 0..1
-  fft: Uint8Array;  // 128-bin display spectrum, 0..Nyquist, dB-mapped bytes
+  volume: number; // RMS level, -60..0 dBFS mapped to 0..1
+  bass: number; // 20-250 Hz band level, 0..1 (dB-mapped bytes)
+  mid: number; // 250-4000 Hz band level, 0..1
+  treble: number; // 4-20 kHz band level, 0..1
+  fft: Uint8Array; // 128-bin display spectrum, 0..Nyquist, dB-mapped bytes
   waveform: Uint8Array; // 128 most recent samples, 128 = zero
   centroid: number; // Spectral centroid on a log axis, 100 Hz..8 kHz mapped to 0..1
   centroidHz: number; // Spectral centroid in Hz
-  flux: number;     // Spectral flux (onset strength), 0..1
-  peakHz: number;   // Loudest spectral peak in Hz, 0 when silent
+  flux: number; // Spectral flux (onset strength), 0..1
+  peakHz: number; // Loudest spectral peak in Hz, 0 when silent
   chroma: Float32Array; // 12 pitch classes from C, peak = 1, all zero when silent
-  scope: Float32Array;  // 2048 most recent samples, -1..1
+  scope: Float32Array; // 2048 most recent samples, -1..1
   sampleRate: number;
 }
 

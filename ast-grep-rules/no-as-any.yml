@@ -1,0 +1,6 @@
+id: no-as-any
+language: Tsx
+severity: error
+message: "`as any` is banned. Narrow the type."
+rule:
+  pattern: $X as any

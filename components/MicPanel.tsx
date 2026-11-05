@@ -1,12 +1,12 @@
-import React from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Text } from '@astryxdesign/core/Text';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { VStack } from '@astryxdesign/core/VStack';
 import { IconDeviceAudioTape, IconMicrophone } from '@tabler/icons-react';
+import type React from 'react';
 
-interface MicPanelProps {
+export interface MicPanelProps {
   isLive: boolean;
   onStart: () => void;
   /** Back to the AI synth. */
@@ -22,12 +22,20 @@ export const MicPanel: React.FC<MicPanelProps> = ({ isLive, onStart, onBack }) =
       </Text>
     </VStack>
     <HStack gap={2} align="center">
-      {!isLive && <Button label="Allow microphone" tooltip="Ask the browser for the microphone" variant="primary" icon={<IconMicrophone />} onClick={onStart} />}
+      {!isLive && (
+        <Button
+          label="Allow microphone"
+          tooltip="Ask the browser for the microphone"
+          variant="primary"
+          icon={<IconMicrophone />}
+          onClick={onStart}
+        />
+      )}
       <ToggleButton
         label={isLive ? 'Listening' : 'Ambient sound'}
         tooltip="Ambient sound is on. Click to go back to the AI synth"
         icon={<IconDeviceAudioTape />}
-        isPressed
+        isPressed={true}
         onPressedChange={onBack}
       />
     </HStack>

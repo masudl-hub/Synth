@@ -1,9 +1,7 @@
+import { PITCH_NAMES } from '../audio/analysis.ts';
+import type { AudioFeatures, Point, SimulationContext, SimulationDef } from '../types.ts';
+import { dist, lerp, map, type Point3D, project, rotateX, rotateY } from '../utils/math.ts';
 
-import { SimulationDef, SimulationContext } from '../types';
-import { dist, map, project, Point3D, rotateY, rotateX, lerp } from '../utils/math';
-import { PITCH_NAMES } from '../audio/analysis';
-
-const COLOR_BG = '#09090b';
 const COLOR_STROKE = '#e4e4e7';
 
 /** Several drawings use pixel constants tuned for a full-size tile; the article draws them small, so they shrink to fit. */
@@ -12,113 +10,145 @@ const fitTo = (ctx: CanvasRenderingContext2D, width: number, height: number, ref
 
 // --- HUD Helper ---
 const drawEquationOverlay = (
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
+  { ctx, width, height }: Pick<SimulationContext, 'ctx' | 'width' | 'height'>,
   equation: string,
-  vars: Record<string, string | number>
+  vars: Record<string, string | number>,
 ) => {
   // The article draws the shapes alone.
-  if (ctx.canvas.dataset.bare) return;
+  if (ctx.canvas.dataset.bare) {
+    return;
+  }
   const barHeight = 24;
   const padding = 12;
-  
+
   // Text Config
   ctx.font = '10px Geist, sans-serif';
   ctx.textBaseline = 'middle';
-  
+
   // Draw Equation (Left)
   ctx.textAlign = 'left';
   ctx.fillStyle = '#71717a'; // Zinc-500
   ctx.fillText(equation, padding, height - barHeight / 2);
-  
+
   // Draw Vars (Right)
   ctx.textAlign = 'right';
   ctx.fillStyle = '#e4e4e7'; // Zinc-200 (Brighter for values)
-  
+
   const varString = Object.entries(vars)
     .map(([k, v]) => {
-        const valStr = typeof v === 'number' ? v.toFixed(2) : v;
-        return `${k}=${valStr}`;
+      const valStr = typeof v === 'number' ? v.toFixed(2) : v;
+      return `${k}=${valStr}`;
     })
     .join('   ');
-    
+
   ctx.fillText(varString, width - padding, height - barHeight / 2);
 };
 
 /* Name, source and formula for every simulation. The overlay prints the formula, so it can't drift from the card. */
 const META = {
   ridge: {
-    title: "Ridge", description: "Waterfall Spectrogram", fidelity: "computes" as const,
-    reference: "Koenig, Dunn & Lacy, J. Acoust. Soc. Am. 18(1), 19–49, 1946; Allen & Rabiner, Proc. IEEE 65(11), 1558–1564, 1977",
-    formula: "L(t,f) = dB-mapped |STFT{x}(t,f)|",
+    title: 'Ridge',
+    description: 'Waterfall Spectrogram',
+    fidelity: 'computes' as const,
+    reference:
+      'Koenig, Dunn & Lacy, J. Acoust. Soc. Am. 18(1), 19–49, 1946; Allen & Rabiner, Proc. IEEE 65(11), 1558–1564, 1977',
+    formula: 'L(t,f) = dB-mapped |STFT{x}(t,f)|',
   },
   holo: {
-    title: "Holo", description: "Spherical Harmonic Surface", fidelity: "inspired" as const,
-    reference: "Lamb, Proc. London Math. Soc. 13, 189–212, 1882 (vibrations of an elastic sphere)",
-    formula: "r = R + A·Yₗᵐ(θ,φ) + w(φ)",
+    title: 'Holo',
+    description: 'Spherical Harmonic Surface',
+    fidelity: 'inspired' as const,
+    reference: 'Lamb, Proc. London Math. Soc. 13, 189–212, 1882 (vibrations of an elastic sphere)',
+    formula: 'r = R + A·Yₗᵐ(θ,φ) + w(φ)',
   },
   warp: {
-    title: "Warp", description: "Idealised Chladni Pattern", fidelity: "idealised" as const,
-    reference: "Chladni, Entdeckungen über die Theorie des Klanges, 1787; Ritz, Ann. Phys. 333(4), 737–786, 1909 (exact modes)",
-    formula: "z = cos(nπx)cos(mπy) − cos(mπx)cos(nπy)",
+    title: 'Warp',
+    description: 'Idealised Chladni Pattern',
+    fidelity: 'idealised' as const,
+    reference:
+      'Chladni, Entdeckungen über die Theorie des Klanges, 1787; Ritz, Ann. Phys. 333(4), 737–786, 1909 (exact modes)',
+    formula: 'z = cos(nπx)cos(mπy) − cos(mπx)cos(nπy)',
   },
   strata: {
-    title: "Strata", description: "Waveform Stack", fidelity: "artistic" as const,
-    reference: "Signal samples x[n]; layering and texture are invented",
-    formula: "y = yᵢ + 80·V·dᵢ·x[n] + 20·T·sin(κx+5t)cos(0.05x)",
+    title: 'Strata',
+    description: 'Waveform Stack',
+    fidelity: 'artistic' as const,
+    reference: 'Signal samples x[n]; layering and texture are invented',
+    formula: 'y = yᵢ + 80·V·dᵢ·x[n] + 20·T·sin(κx+5t)cos(0.05x)',
   },
   array: {
-    title: "Array", description: "Idealised Chladni Sand", fidelity: "idealised" as const,
-    reference: "Chladni, 1787; Waller, Chladni Figures: A Study in Symmetry, 1961",
-    formula: "F = −∇|z(x,y)|",
+    title: 'Array',
+    description: 'Idealised Chladni Sand',
+    fidelity: 'idealised' as const,
+    reference: 'Chladni, 1787; Waller, Chladni Figures: A Study in Symmetry, 1961',
+    formula: 'F = −∇|z(x,y)|',
   },
   twist: {
-    title: "Twist", description: "Ideal String Standing Wave", fidelity: "idealised" as const,
-    reference: "Melde, Ann. Phys. Chem. 109, 193–215, 1860",
-    formula: "y = A sin(nπx/L) cos(nω₁t + φᵢ) + w(x)",
+    title: 'Twist',
+    description: 'Ideal String Standing Wave',
+    fidelity: 'idealised' as const,
+    reference: 'Melde, Ann. Phys. Chem. 109, 193–215, 1860',
+    formula: 'y = A sin(nπx/L) cos(nω₁t + φᵢ) + w(x)',
   },
   swarm: {
-    title: "Swarm", description: "Lissajous Particles", fidelity: "idealised" as const,
-    reference: "Lissajous, Ann. chim. phys. 51, 147–231, 1857",
-    formula: "x = A sin(a(t+φ)+δ),  y = A sin(b(t+φ)),  δ = π/2",
+    title: 'Swarm',
+    description: 'Lissajous Particles',
+    fidelity: 'idealised' as const,
+    reference: 'Lissajous, Ann. chim. phys. 51, 147–231, 1857',
+    formula: 'x = A sin(a(t+φ)+δ),  y = A sin(b(t+φ)),  δ = π/2',
   },
   hive: {
-    title: "Hive", description: "Radial Wave on a Hex Grid", fidelity: "inspired" as const,
-    reference: "Kittel, Introduction to Solid State Physics, ch. 4 (travelling waves only)",
-    formula: "s = s₀ + A cos(kr − ωt)",
+    title: 'Hive',
+    description: 'Radial Wave on a Hex Grid',
+    fidelity: 'inspired' as const,
+    reference: 'Kittel, Introduction to Solid State Physics, ch. 4 (travelling waves only)',
+    formula: 's = s₀ + A cos(kr − ωt)',
   },
   phase: {
-    title: "Phase", description: "Delay-Embedded Waveform", fidelity: "computes" as const,
-    reference: "Takens, Lecture Notes in Math. 898, 366–381, 1981; Fraser & Swinney, Phys. Rev. A 33, 1134–1140, 1986",
-    formula: "(x[n], x[n+τ]),  τ = fs / 4f_pk",
+    title: 'Phase',
+    description: 'Delay-Embedded Waveform',
+    fidelity: 'computes' as const,
+    reference: 'Takens, Lecture Notes in Math. 898, 366–381, 1981; Fraser & Swinney, Phys. Rev. A 33, 1134–1140, 1986',
+    formula: '(x[n], x[n+τ]),  τ = fs / 4f_pk',
   },
   fluid: {
-    title: "Fluid", description: "Velocity Field Particles", fidelity: "inspired" as const,
-    reference: "Stam, Stable Fluids, SIGGRAPH 1999, 121–128 (diffusion idea only, solved explicitly)",
-    formula: "∂u/∂t = ν∇²u − γu + F",
+    title: 'Fluid',
+    description: 'Velocity Field Particles',
+    fidelity: 'inspired' as const,
+    reference: 'Stam, Stable Fluids, SIGGRAPH 1999, 121–128 (diffusion idea only, solved explicitly)',
+    formula: '∂u/∂t = ν∇²u − γu + F',
   },
   vector: {
-    title: "Vector", description: "Polar Spectrum", fidelity: "computes" as const,
-    reference: "Oppenheim & Schafer, Discrete-Time Signal Processing, 2009",
-    formula: "r = R + g·|X(f)|",
+    title: 'Vector',
+    description: 'Polar Spectrum',
+    fidelity: 'computes' as const,
+    reference: 'Oppenheim & Schafer, Discrete-Time Signal Processing, 2009',
+    formula: 'r = R + g·|X(f)|',
   },
   lattice: {
-    title: "Lattice", description: "Tonnetz", fidelity: "computes" as const,
-    reference: "Euler, Tentamen novae theoriae musicae, 1739; Cohn, J. Music Theory 41, 1997",
-    formula: "pc(i,j) = (7i + 4j) mod 12",
+    title: 'Lattice',
+    description: 'Tonnetz',
+    fidelity: 'computes' as const,
+    reference: 'Euler, Tentamen novae theoriae musicae, 1739; Cohn, J. Music Theory 41, 1997',
+    formula: 'pc(i,j) = (7i + 4j) mod 12',
   },
   chaos: {
-    title: "Chaos", description: "Lorenz System", fidelity: "computes" as const,
-    reference: "Lorenz, J. Atmos. Sci. 20(2), 130–141, 1963",
-    formula: "x′ = σ(y−x),  y′ = x(ρ−z)−y,  z′ = xy−βz",
+    title: 'Chaos',
+    description: 'Lorenz System',
+    fidelity: 'computes' as const,
+    reference: 'Lorenz, J. Atmos. Sci. 20(2), 130–141, 1963',
+    formula: 'x′ = σ(y−x),  y′ = x(ρ−z)−y,  z′ = xy−βz',
   },
 };
 
 /* Chladni mode (n, m) on the unit square, ordered by n² + m², which orders the plate's resonant frequencies. */
 const CHLADNI_MODES: [number, number][] = (() => {
   const modes: [number, number][] = [];
-  for (let n = 1; n <= 7; n++) for (let m = n + 1; m <= 8; m++) modes.push([n, m]);
+  for (let n = 1; n <= 7; n++) {
+    for (let m = n + 1; m <= 8; m++) {
+      modes.push([n, m]);
+    }
+  }
   return modes.sort((a, b) => a[0] ** 2 + a[1] ** 2 - (b[0] ** 2 + b[1] ** 2)).slice(0, 12);
 })();
 const chladniMode = (centroid: number) =>
@@ -128,16 +158,23 @@ const chladniZ = (u: number, v: number, n: number, m: number) =>
   Math.cos(n * Math.PI * u) * Math.cos(m * Math.PI * v) - Math.cos(m * Math.PI * u) * Math.cos(n * Math.PI * v);
 
 /* Associated Legendre function P_l^m(x), by upward recurrence in l. */
-const legendre = (l: number, m: number, x: number) => {
+export const legendre = (l: number, m: number, x: number) => {
   let pmm = 1;
   if (m > 0) {
     const s = Math.sqrt((1 - x) * (1 + x));
     let f = 1;
-    for (let i = 1; i <= m; i++) { pmm *= f * s; f += 2; }
+    for (let i = 1; i <= m; i++) {
+      pmm *= f * s;
+      f += 2;
+    }
   }
-  if (l === m) return pmm;
+  if (l === m) {
+    return pmm;
+  }
   let pmm1 = x * (2 * m + 1) * pmm;
-  if (l === m + 1) return pmm1;
+  if (l === m + 1) {
+    return pmm1;
+  }
   let pll = 0;
   for (let ll = m + 2; ll <= l; ll++) {
     pll = (x * (2 * ll - 1) * pmm1 - (ll + m - 1) * pmm) / (ll - m);
@@ -153,7 +190,9 @@ const realHarmonic = (l: number, m: number, lat: number, long: number) => {
   let peak = harmonicPeaks.get(key);
   if (peak === undefined) {
     peak = 1e-6;
-    for (let i = 0; i <= 60; i++) peak = Math.max(peak, Math.abs(legendre(l, m, Math.cos((i / 60) * Math.PI))));
+    for (let i = 0; i <= 60; i++) {
+      peak = Math.max(peak, Math.abs(legendre(l, m, Math.cos((i / 60) * Math.PI))));
+    }
     harmonicPeaks.set(key, peak);
   }
   return (legendre(l, m, Math.sin(lat)) / peak) * Math.cos(m * long);
@@ -161,26 +200,26 @@ const realHarmonic = (l: number, m: number, lat: number, long: number) => {
 
 /* --- 1. Ridge Lines (3D Waterfall Spectrogram) --- */
 interface RidgeState {
-    history: Uint8Array[];
-    initialized: boolean;
+  history: Uint8Array[];
+  initialized: boolean;
 }
 
 const ridgeState: RidgeState = {
-    history: [],
-    initialized: false
+  history: [],
+  initialized: false,
 };
 
 const drawRidges = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
   // CONFIG
   const rows = 45; // Depth history
   const sampleRes = 1; // Skip pixels for performance
-  
+
   // INIT HISTORY
   if (!ridgeState.initialized) {
-      for(let i=0; i<rows; i++) {
-          ridgeState.history.push(new Uint8Array(audio.fft.length).fill(0));
-      }
-      ridgeState.initialized = true;
+    for (let i = 0; i < rows; i++) {
+      ridgeState.history.push(new Uint8Array(audio.fft.length).fill(0));
+    }
+    ridgeState.initialized = true;
   }
 
   // UPDATE HISTORY (Waterfall scroll)
@@ -193,55 +232,62 @@ const drawRidges = ({ ctx, width, height, time, mouse, audio }: SimulationContex
   // DRAW
   for (let r = rows - 1; r >= 0; r--) {
     const frameData = ridgeState.history[r];
-    const normalizedDepth = r / rows; 
-    const baseY = height * 0.9 - (normalizedDepth * height * 0.6);
-    const margin = width * 0.1 + (normalizedDepth * width * 0.2);
-    const rowWidth = width - (margin * 2);
+    const normalizedDepth = r / rows;
+    const baseY = height * 0.9 - normalizedDepth * height * 0.6;
+    const margin = width * 0.1 + normalizedDepth * width * 0.2;
+    const rowWidth = width - margin * 2;
     const startX = margin;
 
     ctx.beginPath();
-    
+
     let frameVol = 0;
-    for(let i=0; i<frameData.length; i++) frameVol += frameData[i];
+    for (let i = 0; i < frameData.length; i++) {
+      frameVol += frameData[i];
+    }
     frameVol /= frameData.length;
-    
-    const baseWidth = (1.0 - normalizedDepth) * 2; 
-    ctx.lineWidth = Math.max(0.5, baseWidth + (frameVol * 0.05));
-    
-    const alpha = map(normalizedDepth, 0, 1, 1, 0.2);
+
+    const baseWidth = (1.0 - normalizedDepth) * 2;
+    ctx.lineWidth = Math.max(0.5, baseWidth + frameVol * 0.05);
+
+    const alpha = map(normalizedDepth, [0, 1], [1, 0.2]);
     ctx.strokeStyle = `rgba(228, 228, 231, ${alpha})`;
 
     for (let i = 0; i < frameData.length; i += sampleRes) {
-        const xPercent = i / (frameData.length * 0.7);
-        if (xPercent > 1) break;
-        
-        let x = startX + xPercent * rowWidth;
-        const val = frameData[i] / 255.0;
-        let amp = val * 150 * (1 - normalizedDepth); 
-        amp += audio.flux * 10 * (1 - normalizedDepth);
+      const xPercent = i / (frameData.length * 0.7);
+      if (xPercent > 1) {
+        break;
+      }
 
-        const d = dist(x, baseY - amp, mouse.x, mouse.y);
-        const mouseRange = 150;
-        let xOffset = 0;
-        let yOffset = 0;
-        if (d < mouseRange) {
-             const force = (mouseRange - d) / mouseRange;
-             const dx = x - mouse.x;
-             xOffset = dx * force * 0.5;
-             yOffset = force * 50; 
-        }
+      const x = startX + xPercent * rowWidth;
+      const val = frameData[i] / 255.0;
+      let amp = val * 150 * (1 - normalizedDepth);
+      amp += audio.flux * 10 * (1 - normalizedDepth);
 
-        const y = baseY - amp + yOffset;
-        if (i === 0) ctx.moveTo(x + xOffset, y);
-        else ctx.lineTo(x + xOffset, y);
+      const d = dist(x, baseY - amp, mouse.x, mouse.y);
+      const mouseRange = 150;
+      let xOffset = 0;
+      let yOffset = 0;
+      if (d < mouseRange) {
+        const force = (mouseRange - d) / mouseRange;
+        const dx = x - mouse.x;
+        xOffset = dx * force * 0.5;
+        yOffset = force * 50;
+      }
+
+      const y = baseY - amp + yOffset;
+      if (i === 0) {
+        ctx.moveTo(x + xOffset, y);
+      } else {
+        ctx.lineTo(x + xOffset, y);
+      }
     }
     ctx.stroke();
   }
-  
+
   // Only the lowest 70% of bins are drawn.
-  drawEquationOverlay(ctx, width, height, META.ridge.formula, {
-      f: `0–${(audio.sampleRate * 0.35 / 1000).toFixed(1)} kHz`,
-      t: time
+  drawEquationOverlay({ ctx, width, height }, META.ridge.formula, {
+    f: `0–${((audio.sampleRate * 0.35) / 1000).toFixed(1)} kHz`,
+    t: time,
   });
 };
 
@@ -262,78 +308,82 @@ const drawHoloSphere = ({ ctx, width, height, time, mouse, audio }: SimulationCo
   const order = 1 + Math.floor(degree / 2);
 
   ctx.lineCap = 'round';
-  
+
   const getPoint = (lat: number, long: number) => {
-      const harmonic = realHarmonic(degree, order, lat, long);
-      
-      let angleNorm = long / (Math.PI * 2);
-      // Triangle mapping for seamless wrap
-      if (angleNorm > 0.5) angleNorm = 1.0 - angleNorm;
-      angleNorm *= 2.0; 
-      
-      const waveIdx = Math.floor(angleNorm * (audio.waveform.length - 1));
-      const safeIdx = Math.max(0, Math.min(audio.waveform.length - 1, waveIdx));
-      const waveVal = (audio.waveform[safeIdx] / 128.0 - 1.0);
+    const harmonic = realHarmonic(degree, order, lat, long);
 
-      const displacement = (harmonic * 20 * audio.bass) + (waveVal * 30 * audio.mid);
-      const r = baseRadius + displacement + (audio.flux * 20);
+    let angleNorm = long / (Math.PI * 2);
+    // Triangle mapping for seamless wrap
+    if (angleNorm > 0.5) {
+      angleNorm = 1.0 - angleNorm;
+    }
+    angleNorm *= 2.0;
 
-      const x = Math.cos(lat) * Math.cos(long) * r;
-      const y = Math.sin(lat) * r;
-      const z = Math.cos(lat) * Math.sin(long) * r;
-      return { x, y, z };
+    const waveIdx = Math.floor(angleNorm * (audio.waveform.length - 1));
+    const safeIdx = Math.max(0, Math.min(audio.waveform.length - 1, waveIdx));
+    const waveVal = audio.waveform[safeIdx] / 128.0 - 1.0;
+
+    const displacement = harmonic * 20 * audio.bass + waveVal * 30 * audio.mid;
+    const r = baseRadius + displacement + audio.flux * 20;
+
+    const x = Math.cos(lat) * Math.cos(long) * r;
+    const y = Math.sin(lat) * r;
+    const z = Math.cos(lat) * Math.sin(long) * r;
+    return { x, y, z };
   };
 
   const drawSegment = (p1: Point3D, p2: Point3D) => {
-    let rp1 = rotateX(p1, rotX); rp1 = rotateY(rp1, rotY);
-    let rp2 = rotateX(p2, rotX); rp2 = rotateY(rp2, rotY);
-    const proj1 = project(rp1.x, rp1.y, rp1.z, width, height, 400);
-    const proj2 = project(rp2.x, rp2.y, rp2.z, width, height, 400);
-    
+    let rp1 = rotateX(p1, rotX);
+    rp1 = rotateY(rp1, rotY);
+    let rp2 = rotateX(p2, rotX);
+    rp2 = rotateY(rp2, rotY);
+    const proj1 = project(rp1.x, rp1.y, rp1.z, { width, height, fov: 400 });
+    const proj2 = project(rp2.x, rp2.y, rp2.z, { width, height, fov: 400 });
+
     const avgZ = (rp1.z + rp2.z) / 2;
-    const alpha = map(avgZ, -baseRadius, baseRadius, 1, 0.1);
+    const alpha = map(avgZ, [-baseRadius, baseRadius], [1, 0.1]);
     const clampedAlpha = Math.max(0.1, Math.min(1, alpha));
-    
+
     ctx.strokeStyle = `rgba(228, 228, 231, ${Math.min(1, clampedAlpha + audio.flux)})`;
     ctx.lineWidth = 1 + audio.bass * 2;
-    
+
     ctx.beginPath();
     ctx.moveTo(proj1.x, proj1.y);
     ctx.lineTo(proj2.x, proj2.y);
     ctx.stroke();
-    
+
     if (avgZ < 0 && audio.flux > 0.2 && Math.random() > 0.9) {
-        ctx.fillStyle = `rgba(255, 255, 255, ${clampedAlpha})`;
-        const dotSize = 2 + audio.treble * 4;
-        ctx.beginPath();
-        ctx.arc(proj1.x, proj1.y, dotSize, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.fillStyle = `rgba(255, 255, 255, ${clampedAlpha})`;
+      const dotSize = 2 + audio.treble * 4;
+      ctx.beginPath();
+      ctx.arc(proj1.x, proj1.y, dotSize, 0, Math.PI * 2);
+      ctx.fill();
     }
   };
 
   for (let i = 0; i < lats; i++) {
-    const lat1 = map(i, 0, lats, -Math.PI / 2, Math.PI / 2);
-    const lat2 = map(i + 1, 0, lats, -Math.PI / 2, Math.PI / 2);
+    const lat1 = map(i, [0, lats], [-Math.PI / 2, Math.PI / 2]);
+    const lat2 = map(i + 1, [0, lats], [-Math.PI / 2, Math.PI / 2]);
     for (let j = 0; j < longs; j++) {
-        const long1 = map(j, 0, longs, 0, Math.PI * 2);
-        const long2 = map(j + 1, 0, longs, 0, Math.PI * 2);
-        const p1 = getPoint(lat1, long1);
-        const p2 = getPoint(lat1, long2);
-        const p3 = getPoint(lat2, long1);
-        drawSegment(p1, p2);
-        drawSegment(p1, p3);
+      const long1 = map(j, [0, longs], [0, Math.PI * 2]);
+      const long2 = map(j + 1, [0, longs], [0, Math.PI * 2]);
+      const p1 = getPoint(lat1, long1);
+      const p2 = getPoint(lat1, long2);
+      const p3 = getPoint(lat2, long1);
+      drawSegment(p1, p2);
+      drawSegment(p1, p3);
     }
   }
 
-  drawEquationOverlay(ctx, width, height, META.holo.formula, {
-      l: degree,
-      m: order,
-      A: audio.bass
+  drawEquationOverlay({ ctx, width, height }, META.holo.formula, {
+    l: degree,
+    m: order,
+    A: audio.bass,
   });
 };
 
 /* --- 3. Warp Grid (Chladni figure) --- */
-const drawWarpedGrid = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+const drawWarpedGrid = ({ ctx, width, height, mouse, audio }: SimulationContext) => {
   const cols = 40;
   const rows = 40;
   const stepX = width / cols;
@@ -357,18 +407,27 @@ const drawWarpedGrid = ({ ctx, width, height, time, mouse, audio }: SimulationCo
         const vibration = chladni(x, y);
         const amp = 40 * audio.volume;
         const zOff = vibration * amp;
-        if (isVertical) x += zOff;
-        else y += zOff;
+        if (isVertical) {
+          x += zOff;
+        } else {
+          y += zOff;
+        }
 
         const d = dist(x, y, mouse.x, mouse.y);
         if (d < 120) {
-            const damp = d / 120;
-            if (isVertical) x = lerp(x, i * stepX, 1-damp);
-            else y = lerp(y, j * stepY, 1-damp);
+          const damp = d / 120;
+          if (isVertical) {
+            x = lerp(x, i * stepX, 1 - damp);
+          } else {
+            y = lerp(y, j * stepY, 1 - damp);
+          }
         }
 
-        if (j === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+        if (j === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
       }
       ctx.stroke();
     }
@@ -377,10 +436,10 @@ const drawWarpedGrid = ({ ctx, width, height, time, mouse, audio }: SimulationCo
   drawLines(true);
   drawLines(false);
 
-  drawEquationOverlay(ctx, width, height, META.warp.formula, {
-      n: n,
-      m: m,
-      Amp: audio.volume
+  drawEquationOverlay({ ctx, width, height }, META.warp.formula, {
+    n,
+    m,
+    Amp: audio.volume,
   });
 };
 
@@ -394,22 +453,22 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
     ctx.beginPath();
     const normalizedY = i / lines;
     const basePath = height * normalizedY;
-    
+
     for (let x = 0; x < width; x += 5) {
       let y = basePath;
-      
-      const waveIndex = Math.floor(map(x, 0, width, 0, audio.waveform.length));
+
+      const waveIndex = Math.floor(map(x, [0, width], [0, audio.waveform.length]));
       // Raw signal drives the wave
-      const waveAmp = (audio.waveform[waveIndex] / 128.0) - 1.0; 
-      const depthDecay = map(i, 0, lines, 0.2, 2.0);
-      
-      // Removed Perlin noise. 
+      const waveAmp = audio.waveform[waveIndex] / 128.0 - 1.0;
+      const depthDecay = map(i, [0, lines], [0.2, 2.0]);
+
+      // Removed Perlin noise.
       // Replaced with Treble-driven harmonic detail
       // Using sin/cos of the harmonic series to create texture
-      const detailFreq = 0.2 + (audio.treble * 2.0);
+      const detailFreq = 0.2 + audio.treble * 2.0;
       const detailAmp = audio.treble * 20;
       const detail = Math.sin(x * detailFreq + time * 5) * Math.cos(x * 0.05) * detailAmp;
-      
+
       y += waveAmp * 80 * depthDecay * audio.volume;
       y += detail;
 
@@ -417,50 +476,53 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
       const pull = Math.exp(-d * 0.01) * 60;
       y += pull;
 
-      if (x === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      if (x === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
-    ctx.globalAlpha = map(i, 0, lines, 0.2, 1);
+    ctx.globalAlpha = map(i, [0, lines], [0.2, 1]);
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay(ctx, width, height, META.strata.formula, {
-      V: audio.volume,
-      T: audio.treble
+  drawEquationOverlay({ ctx, width, height }, META.strata.formula, {
+    V: audio.volume,
+    T: audio.treble,
   });
 };
 
 /* --- 5. Array (Cymatic Sand) --- */
 interface SandParticle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
 }
 interface ArrayState {
-    particles: SandParticle[];
-    initialized: boolean;
+  particles: SandParticle[];
+  initialized: boolean;
 }
 const arrayState: ArrayState = {
-    particles: [],
-    initialized: false
+  particles: [],
+  initialized: false,
 };
 
-const drawFluidArrays = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
+const drawFluidArrays = ({ ctx, width, height, mouse, audio }: SimulationContext) => {
   const numParticles = 1200;
-  
+
   if (!arrayState.initialized || arrayState.particles.length === 0) {
-      arrayState.particles = [];
-      for(let i=0; i<numParticles; i++) {
-          arrayState.particles.push({
-              x: Math.random() * width,
-              y: Math.random() * height,
-              vx: 0, 
-              vy: 0
-          });
-      }
-      arrayState.initialized = true;
+    arrayState.particles = [];
+    for (let i = 0; i < numParticles; i++) {
+      arrayState.particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: 0,
+        vy: 0,
+      });
+    }
+    arrayState.initialized = true;
   }
 
   const [n, m] = chladniMode(audio.centroid);
@@ -469,73 +531,81 @@ const drawFluidArrays = ({ ctx, width, height, time, mouse, audio }: SimulationC
   const getVibration = (x: number, y: number) => Math.abs(chladniZ(x / width, y / height, n, m));
 
   ctx.fillStyle = COLOR_STROKE;
-  
-  arrayState.particles.forEach(p => {
-      const step = 4;
-      const vibNow = getVibration(p.x, p.y);
-      const vibL = getVibration(p.x - step, p.y);
-      const vibR = getVibration(p.x + step, p.y);
-      const vibU = getVibration(p.x, p.y - step);
-      const vibD = getVibration(p.x, p.y + step);
-      
-      let fx = (vibL - vibR) * 2.0; 
-      let fy = (vibU - vibD) * 2.0;
-      
-      const energy = audio.volume;
-      const active = energy > 0.05;
-      
-      if (active) {
-          p.vx += fx * energy * 2;
-          p.vy += fy * energy * 2;
-          // Brownian motion derived from treble instead of pure random
-          // Use waveform phase to jitter
-          const jitter = (audio.waveform[Math.floor(p.x) % 128] / 128 - 1.0) * audio.treble * 2;
-          p.vx += jitter;
-          p.vy += jitter;
-      }
-      
-      if (audio.flux > 0.3) {
-          // Scatter based on transient strength
-          const scatter = audio.flux * 10;
-          p.vx += (Math.random() - 0.5) * scatter;
-          p.vy += (Math.random() - 0.5) * scatter;
-      }
 
-      const d = dist(p.x, p.y, mouse.x, mouse.y);
-      if (d < 80) {
-          const push = (80 - d) / 80;
-          const ang = Math.atan2(p.y - mouse.y, p.x - mouse.x);
-          p.vx += Math.cos(ang) * push * 3;
-          p.vy += Math.sin(ang) * push * 3;
-      }
-      
-      p.x += p.vx;
-      p.y += p.vy;
-      p.vx *= 0.85;
-      p.vy *= 0.85;
-      
-      if (p.x < 0) p.x = width;
-      if (p.x > width) p.x = 0;
-      if (p.y < 0) p.y = height;
-      if (p.y > height) p.y = 0;
-      
-      ctx.beginPath();
-      const size = 1 + vibNow * 1.5;
-      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-      ctx.fill();
-  });
+  for (const p of arrayState.particles) {
+    const step = 4;
+    const vibNow = getVibration(p.x, p.y);
+    const vibL = getVibration(p.x - step, p.y);
+    const vibR = getVibration(p.x + step, p.y);
+    const vibU = getVibration(p.x, p.y - step);
+    const vibD = getVibration(p.x, p.y + step);
 
-  drawEquationOverlay(ctx, width, height, META.array.formula, {
-      n: n,
-      m: m,
-      E: audio.volume
+    const fx = (vibL - vibR) * 2.0;
+    const fy = (vibU - vibD) * 2.0;
+
+    const energy = audio.volume;
+    const active = energy > 0.05;
+
+    if (active) {
+      p.vx += fx * energy * 2;
+      p.vy += fy * energy * 2;
+      // Brownian motion derived from treble instead of pure random
+      // Use waveform phase to jitter
+      const jitter = (audio.waveform[Math.floor(p.x) % 128] / 128 - 1.0) * audio.treble * 2;
+      p.vx += jitter;
+      p.vy += jitter;
+    }
+
+    if (audio.flux > 0.3) {
+      // Scatter based on transient strength
+      const scatter = audio.flux * 10;
+      p.vx += (Math.random() - 0.5) * scatter;
+      p.vy += (Math.random() - 0.5) * scatter;
+    }
+
+    const d = dist(p.x, p.y, mouse.x, mouse.y);
+    if (d < 80) {
+      const push = (80 - d) / 80;
+      const ang = Math.atan2(p.y - mouse.y, p.x - mouse.x);
+      p.vx += Math.cos(ang) * push * 3;
+      p.vy += Math.sin(ang) * push * 3;
+    }
+
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.85;
+    p.vy *= 0.85;
+
+    if (p.x < 0) {
+      p.x = width;
+    }
+    if (p.x > width) {
+      p.x = 0;
+    }
+    if (p.y < 0) {
+      p.y = height;
+    }
+    if (p.y > height) {
+      p.y = 0;
+    }
+
+    ctx.beginPath();
+    const size = 1 + vibNow * 1.5;
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawEquationOverlay({ ctx, width, height }, META.array.formula, {
+    n,
+    m,
+    E: audio.volume,
   });
 };
 
 /* --- 6. Twist (Standing Waves / Melde's Experiment) --- */
 const OMEGA_1 = 2; // rad/s of the fundamental, so the picture stays readable
 const drawTwist = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
-  const strands = 50; 
+  const strands = 50;
   ctx.strokeStyle = COLOR_STROKE;
   ctx.lineWidth = 1;
 
@@ -543,42 +613,45 @@ const drawTwist = ({ ctx, width, height, time, mouse, audio }: SimulationContext
 
   for (let i = 0; i < strands; i++) {
     ctx.beginPath();
-    const xBase = map(i, 0, strands - 1, width * 0.1, width * 0.9);
+    const xBase = map(i, [0, strands - 1], [width * 0.1, width * 0.9]);
     const strandPhase = i * 0.1;
-    
-    for (let y = 0; y < height; y += 5) {
-        const ny = y / height;
-        const mode = baseMode;
-        const A = 40 * audio.volume; 
-        const standing = Math.sin(mode * Math.PI * ny);
-        // An ideal string has ωₙ = n·ω₁.
-        const oscillation = Math.cos(time * OMEGA_1 * mode + strandPhase);
-        let xOff = standing * oscillation * A;
-        
-        const waveIdx = Math.floor(ny * audio.waveform.length);
-        const raw = (audio.waveform[waveIdx] / 128 - 1) * 20 * audio.treble;
-        xOff += raw;
-        
-        let x = xBase + xOff;
-        const d = dist(xBase, y, mouse.x, mouse.y);
-        if (d < 100) {
-            const pull = (100 - d) / 100;
-            x += (mouse.x - xBase) * pull * 0.5;
-        }
 
-        if (y === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+    for (let y = 0; y < height; y += 5) {
+      const ny = y / height;
+      const mode = baseMode;
+      const A = 40 * audio.volume;
+      const standing = Math.sin(mode * Math.PI * ny);
+      // An ideal string has ωₙ = n·ω₁.
+      const oscillation = Math.cos(time * OMEGA_1 * mode + strandPhase);
+      let xOff = standing * oscillation * A;
+
+      const waveIdx = Math.floor(ny * audio.waveform.length);
+      const raw = (audio.waveform[waveIdx] / 128 - 1) * 20 * audio.treble;
+      xOff += raw;
+
+      let x = xBase + xOff;
+      const d = dist(xBase, y, mouse.x, mouse.y);
+      if (d < 100) {
+        const pull = (100 - d) / 100;
+        x += (mouse.x - xBase) * pull * 0.5;
+      }
+
+      if (y === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
     }
-    
-    const centerDist = Math.abs(i - strands/2) / (strands/2);
-    ctx.globalAlpha = 1.0 - (centerDist * 0.8);
+
+    const centerDist = Math.abs(i - strands / 2) / (strands / 2);
+    ctx.globalAlpha = 1.0 - centerDist * 0.8;
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay(ctx, width, height, META.twist.formula, {
-      n: baseMode,
-      A: (40 * audio.volume).toFixed(1)
+  drawEquationOverlay({ ctx, width, height }, META.twist.formula, {
+    n: baseMode,
+    A: (40 * audio.volume).toFixed(1),
   });
 };
 
@@ -589,29 +662,29 @@ const drawParticles = ({ ctx, width, height, time, mouse, audio }: SimulationCon
   const cx = width / 2;
   const cy = height / 2;
 
-  const f1 = 1.0; 
+  const f1 = 1.0;
   // Unison, fifth, octave, twelfth, double octave.
-  const overtoneMap = [1.0, 1.5, 2.0, 3.0, 4.0]; 
+  const overtoneMap = [1.0, 1.5, 2.0, 3.0, 4.0];
   const mapIdx = Math.min(overtoneMap.length - 1, Math.floor(audio.centroid * overtoneMap.length));
   const f2 = overtoneMap[mapIdx];
-  
+
   for (let i = 0; i < count; i++) {
-    const phase = i * 0.05; 
+    const phase = i * 0.05;
     const baseAmp = Math.min(width, height) * 0.35;
     const Amp = baseAmp * (0.5 + audio.volume * 0.8);
-    
+
     let x = cx + Amp * Math.sin(f1 * (time + phase) + Math.PI / 2);
     let y = cy + Amp * Math.sin(f2 * (time + phase));
-    
+
     // Removed random explosion.
     // Replaced with Waveform-driven displacement
     // Use the actual waveform value at this particle's index
-    const waveIdx = Math.floor(map(i, 0, count, 0, audio.waveform.length));
-    const waveVal = (audio.waveform[waveIdx] / 128.0 - 1.0); // -1 to 1
-    
+    const waveIdx = Math.floor(map(i, [0, count], [0, audio.waveform.length]));
+    const waveVal = audio.waveform[waveIdx] / 128.0 - 1.0; // -1 to 1
+
     // Scatter outward based on the wave amplitude at that moment
     const displacement = waveVal * audio.flux * 300;
-    
+
     const ang = Math.atan2(y - cy, x - cx);
     x += Math.cos(ang) * displacement;
     y += Math.sin(ang) * displacement;
@@ -630,9 +703,9 @@ const drawParticles = ({ ctx, width, height, time, mouse, audio }: SimulationCon
     ctx.fill();
   }
 
-  drawEquationOverlay(ctx, width, height, META.swarm.formula, {
-      a: f1,
-      b: f2.toFixed(1)
+  drawEquationOverlay({ ctx, width, height }, META.swarm.formula, {
+    a: f1,
+    b: f2.toFixed(1),
   });
 };
 
@@ -649,36 +722,41 @@ const drawHex = ({ ctx, width, height, time, mouse, audio }: SimulationContext) 
   ctx.strokeStyle = COLOR_STROKE;
 
   const k = 0.1; // Wave number
-  const omega = 5 + audio.centroid * 10; 
+  const omega = 5 + audio.centroid * 10;
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
       let x = i * w;
-      let y = j * h;
-      if (j % 2 === 1) x += w / 2;
+      const y = j * h;
+      if (j % 2 === 1) {
+        x += w / 2;
+      }
 
       const dCenter = dist(x, y, cx, cy);
       const wave = Math.cos(k * dCenter - time * omega);
       const decay = Math.max(0, 1 - dCenter / (width * 0.6));
-      const amp = audio.volume * decay * 1.5; 
-      const scale = 0.5 + (wave * 0.5 * amp) + 0.3; 
+      const amp = audio.volume * decay * 1.5;
+      const scale = 0.5 + wave * 0.5 * amp + 0.3;
       const dMouse = dist(x, y, mouse.x, mouse.y);
       const mouseInt = Math.max(0, 150 - dMouse) / 150;
       const finalScale = Math.min(1.2, scale + mouseInt * 0.5);
 
       ctx.lineWidth = 1 + finalScale;
-      ctx.globalAlpha = 0.2 + finalScale * 0.6; 
+      ctx.globalAlpha = 0.2 + finalScale * 0.6;
 
       const hr = r * finalScale;
 
       ctx.beginPath();
       // Pointy-top, to match the row spacing above.
       for (let v = 0; v < 6; v++) {
-        const angle = Math.PI / 3 * v + Math.PI / 6;
+        const angle = (Math.PI / 3) * v + Math.PI / 6;
         const hx = x + Math.cos(angle) * hr;
         const hy = y + Math.sin(angle) * hr;
-        if (v === 0) ctx.moveTo(hx, hy);
-        else ctx.lineTo(hx, hy);
+        if (v === 0) {
+          ctx.moveTo(hx, hy);
+        } else {
+          ctx.lineTo(hx, hy);
+        }
       }
       ctx.closePath();
       ctx.stroke();
@@ -686,10 +764,10 @@ const drawHex = ({ ctx, width, height, time, mouse, audio }: SimulationContext) 
   }
   ctx.globalAlpha = 1;
 
-  drawEquationOverlay(ctx, width, height, META.hive.formula, {
-      k: k,
-      ω: omega.toFixed(1),
-      A: audio.volume
+  drawEquationOverlay({ ctx, width, height }, META.hive.formula, {
+    k,
+    ω: omega.toFixed(1),
+    A: audio.volume,
   });
 };
 
@@ -705,401 +783,474 @@ const drawPhaseSpace = ({ ctx, width, height, mouse, audio }: SimulationContext)
 
   // A quarter period of the loudest partial opens a sine into a circle (the first zero of its autocorrelation).
   // Fraser & Swinney (1986) give the general rule: the first minimum of mutual information.
-  const delay = audio.peakHz > 0
-    ? Math.max(1, Math.min(256, Math.round(audio.sampleRate / (4 * audio.peakHz))))
-    : 8;
+  const delay = audio.peakHz > 0 ? Math.max(1, Math.min(256, Math.round(audio.sampleRate / (4 * audio.peakHz)))) : 8;
 
   const signal = audio.scope;
   const count = 1024;
   const first = signal.length - count - delay;
   let peak = 0.05;
-  for (let i = first; i < signal.length; i++) peak = Math.max(peak, Math.abs(signal[i]));
+  for (let i = first; i < signal.length; i++) {
+    peak = Math.max(peak, Math.abs(signal[i]));
+  }
   const scale = radius / peak;
 
   ctx.beginPath();
   for (let i = 0; i < count; i++) {
-      let px = cx + signal[first + i] * scale;
-      let py = cy + signal[first + i + delay] * scale;
+    let px = cx + signal[first + i] * scale;
+    let py = cy + signal[first + i + delay] * scale;
 
-      const d = dist(px, py, mouse.x, mouse.y);
-      if (d < 100) {
-          const push = (100 - d) / 100;
-          const ang = Math.atan2(py - mouse.y, px - mouse.x);
-          px += Math.cos(ang) * push * 30;
-          py += Math.sin(ang) * push * 30;
-      }
+    const d = dist(px, py, mouse.x, mouse.y);
+    if (d < 100) {
+      const push = (100 - d) / 100;
+      const ang = Math.atan2(py - mouse.y, px - mouse.x);
+      px += Math.cos(ang) * push * 30;
+      py += Math.sin(ang) * push * 30;
+    }
 
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+    if (i === 0) {
+      ctx.moveTo(px, py);
+    } else {
+      ctx.lineTo(px, py);
+    }
   }
   ctx.stroke();
 
-  drawEquationOverlay(ctx, width, height, META.phase.formula, {
-      τ: `${delay} smp`,
-      "f_pk": `${audio.peakHz.toFixed(0)} Hz`
+  drawEquationOverlay({ ctx, width, height }, META.phase.formula, {
+    τ: `${delay} smp`,
+    f_pk: `${audio.peakHz.toFixed(0)} Hz`,
   });
 };
 
 /* --- 10. Fluid (diffusing velocity field, particles advected) --- */
 interface Particle {
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    age: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
 }
 interface FluidState {
-    initialized: boolean;
-    cols: number;
-    rows: number;
-    res: number;
-    velX: Float32Array;
-    velY: Float32Array;
-    particles: Particle[];
-    prevMouse: { x: number; y: number };
+  initialized: boolean;
+  cols: number;
+  rows: number;
+  res: number;
+  velX: Float32Array;
+  velY: Float32Array;
+  particles: Particle[];
+  prevMouse: { x: number; y: number };
 }
-let fluid: FluidState = {
-    initialized: false,
-    cols: 0,
-    rows: 0,
-    res: 20, 
-    velX: new Float32Array(0),
-    velY: new Float32Array(0),
-    particles: [],
-    prevMouse: { x: 0, y: 0 }
+const fluid: FluidState = {
+  initialized: false,
+  cols: 0,
+  rows: 0,
+  res: 20,
+  velX: new Float32Array(0),
+  velY: new Float32Array(0),
+  particles: [],
+  prevMouse: { x: 0, y: 0 },
+};
+
+/** The grid drawFluid is working on this frame. */
+interface FluidGrid {
+  cols: number;
+  rows: number;
+  width: number;
+  height: number;
+  fit: number;
+}
+
+/** Fresh still field and reseeded particles, for a new grid size. */
+const resetFluid = ({ cols, rows, width, height, fit }: FluidGrid) => {
+  fluid.cols = cols;
+  fluid.rows = rows;
+  fluid.velX = new Float32Array(cols * rows).fill(0);
+  fluid.velY = new Float32Array(cols * rows).fill(0);
+  fluid.particles = [];
+  for (let i = 0; i < Math.round(1200 * fit); i++) {
+    fluid.particles.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: 0,
+      vy: 0,
+      age: Math.random() * 100,
+    });
+  }
+  fluid.initialized = true;
+};
+
+/** The pointer drags the cell under it by its own motion. */
+const stirFluid = ({ cols, rows }: FluidGrid, mouse: Point) => {
+  const mx = Math.floor(mouse.x / fluid.res);
+  const my = Math.floor(mouse.y / fluid.res);
+  const mvx = mouse.x - fluid.prevMouse.x;
+  const mvy = mouse.y - fluid.prevMouse.y;
+
+  if (mx >= 0 && mx < cols && my >= 0 && my < rows) {
+    const index = mx + my * cols;
+    fluid.velX[index] += mvx * 1.5;
+    fluid.velY[index] += mvy * 1.5;
+  }
+  fluid.prevMouse = { x: mouse.x, y: mouse.y };
+};
+
+/** An onset pushes the centre of the field outward. */
+const boomFluid = ({ cols, rows }: FluidGrid, flux: number) => {
+  const cx = Math.floor(cols / 2);
+  const cy = Math.floor(rows / 2);
+  const boomRadius = 8;
+  for (let y = cy - boomRadius; y <= cy + boomRadius; y++) {
+    for (let x = cx - boomRadius; x <= cx + boomRadius; x++) {
+      if (x >= 0 && x < cols && y >= 0 && y < rows) {
+        const idx = x + y * cols;
+        const dx = x - cx;
+        const dy = y - cy;
+        const ang = Math.atan2(dy, dx);
+        const force = flux * 30;
+        fluid.velX[idx] += Math.cos(ang) * force;
+        fluid.velY[idx] += Math.sin(ang) * force;
+      }
+    }
+  }
+};
+
+/** Damping, explicit diffusion towards the neighbour average, then audio turbulence. */
+const diffuseFluid = ({ cols, rows }: FluidGrid, time: number, audio: AudioFeatures) => {
+  for (let i = 0; i < fluid.velX.length; i++) {
+    fluid.velX[i] *= 0.94;
+    fluid.velY[i] *= 0.94;
+    const x = i % cols;
+    const y = Math.floor(i / cols);
+    if (x > 0 && x < cols - 1 && y > 0 && y < rows - 1) {
+      const up = i - cols;
+      const down = i + cols;
+      const left = i - 1;
+      const right = i + 1;
+      const avgX = (fluid.velX[up] + fluid.velX[down] + fluid.velX[left] + fluid.velX[right]) * 0.25;
+      const avgY = (fluid.velY[up] + fluid.velY[down] + fluid.velY[left] + fluid.velY[right]) * 0.25;
+      fluid.velX[i] += (avgX - fluid.velX[i]) * 0.2;
+      fluid.velY[i] += (avgY - fluid.velY[i]) * 0.2;
+    }
+
+    // Removed Perlin Noise
+    // Use Audio Centroid to create turbulence patterns
+    const turbScale = 0.05 + audio.centroid * 0.2;
+    const turbForce = audio.treble * 5;
+    // Simple procedural turbulence based on position and time
+    const flow = Math.sin(x * turbScale + time) + Math.cos(y * turbScale + time);
+
+    fluid.velX[i] += Math.cos(flow * Math.PI) * turbForce;
+    fluid.velY[i] += Math.sin(flow * Math.PI) * turbForce;
+  }
+};
+
+/** Particles pick up the velocity of their cell, wrap at the edges and draw as squares. */
+const advectFluid = (
+  ctx: CanvasRenderingContext2D,
+  { cols, rows, width, height, fit }: FluidGrid,
+  audio: AudioFeatures,
+) => {
+  ctx.fillStyle = COLOR_STROKE;
+
+  for (const p of fluid.particles) {
+    const gx = Math.floor(p.x / fluid.res);
+    const gy = Math.floor(p.y / fluid.res);
+    if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
+      const index = gx + gy * cols;
+      p.vx += fluid.velX[index] * 0.2;
+      p.vy += fluid.velY[index] * 0.2;
+    }
+    p.x += p.vx * fit;
+    p.y += p.vy * fit;
+    p.vx *= 0.95;
+    p.vy *= 0.95;
+    if (p.x < 0) {
+      p.x = width;
+    }
+    if (p.x > width) {
+      p.x = 0;
+    }
+    if (p.y < 0) {
+      p.y = height;
+    }
+    if (p.y > height) {
+      p.y = 0;
+    }
+    const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+    // The field wraps, so the right edge is the left edge: it reads sample 0, not one past the end.
+    const waveIdx = Math.floor(map(p.x, [0, width], [0, audio.waveform.length])) % audio.waveform.length;
+    const waveVal = Math.abs(audio.waveform[waveIdx] / 128 - 1);
+    const size = (Math.min(3, Math.max(0.5, speed * 0.5)) + waveVal * 4) * Math.max(fit, 0.4);
+    const alpha = Math.min(1, speed * 0.2 + 0.1 + audio.volume * 0.5);
+    ctx.globalAlpha = alpha;
+    ctx.fillRect(p.x, p.y, size, size);
+  }
+  ctx.globalAlpha = 1;
 };
 
 const drawFluid = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
-    const fit = fitTo(ctx, width, height, 480);
-    fluid.res = Math.max(5, Math.round(20 * fit));
-    const cols = Math.ceil(width / fluid.res);
-    const rows = Math.ceil(height / fluid.res);
-    
-    if (!fluid.initialized || fluid.cols !== cols || fluid.rows !== rows) {
-        fluid.cols = cols;
-        fluid.rows = rows;
-        fluid.velX = new Float32Array(cols * rows).fill(0);
-        fluid.velY = new Float32Array(cols * rows).fill(0);
-        fluid.particles = [];
-        for(let i=0; i<Math.round(1200 * fit); i++) {
-            fluid.particles.push({
-                x: Math.random() * width,
-                y: Math.random() * height,
-                vx: 0,
-                vy: 0,
-                age: Math.random() * 100
-            });
-        }
-        fluid.initialized = true;
-    }
+  const fit = fitTo(ctx, width, height, 480);
+  fluid.res = Math.max(5, Math.round(20 * fit));
+  const cols = Math.ceil(width / fluid.res);
+  const rows = Math.ceil(height / fluid.res);
+  const grid: FluidGrid = { cols, rows, width, height, fit };
 
-    const mx = Math.floor(mouse.x / fluid.res);
-    const my = Math.floor(mouse.y / fluid.res);
-    const mvx = mouse.x - fluid.prevMouse.x;
-    const mvy = mouse.y - fluid.prevMouse.y;
-    
-    if (mx >= 0 && mx < cols && my >= 0 && my < rows) {
-        const index = mx + my * cols;
-        fluid.velX[index] += mvx * 1.5;
-        fluid.velY[index] += mvy * 1.5;
-    }
-    fluid.prevMouse = { x: mouse.x, y: mouse.y };
-    
-    if (audio.flux > 0.25) {
-        const cx = Math.floor(cols/2);
-        const cy = Math.floor(rows/2);
-        const boomRadius = 8;
-        for(let y = cy - boomRadius; y <= cy + boomRadius; y++) {
-            for(let x = cx - boomRadius; x <= cx + boomRadius; x++) {
-                 if (x>=0 && x<cols && y>=0 && y<rows) {
-                     const idx = x + y*cols;
-                     const dx = x - cx;
-                     const dy = y - cy;
-                     const ang = Math.atan2(dy, dx);
-                     const force = audio.flux * 30;
-                     fluid.velX[idx] += Math.cos(ang) * force;
-                     fluid.velY[idx] += Math.sin(ang) * force;
-                 }
-            }
-        }
-    }
+  if (!fluid.initialized || fluid.cols !== cols || fluid.rows !== rows) {
+    resetFluid(grid);
+  }
 
-    for (let i = 0; i < fluid.velX.length; i++) {
-        fluid.velX[i] *= 0.94; 
-        fluid.velY[i] *= 0.94;
-        const x = i % cols;
-        const y = Math.floor(i / cols);
-        if (x > 0 && x < cols - 1 && y > 0 && y < rows - 1) {
-            const up = i - cols;
-            const down = i + cols;
-            const left = i - 1;
-            const right = i + 1;
-            const avgX = (fluid.velX[up] + fluid.velX[down] + fluid.velX[left] + fluid.velX[right]) * 0.25;
-            const avgY = (fluid.velY[up] + fluid.velY[down] + fluid.velY[left] + fluid.velY[right]) * 0.25;
-            fluid.velX[i] += (avgX - fluid.velX[i]) * 0.2;
-            fluid.velY[i] += (avgY - fluid.velY[i]) * 0.2;
-        }
-        
-        // Removed Perlin Noise
-        // Use Audio Centroid to create turbulence patterns
-        const turbScale = 0.05 + audio.centroid * 0.2;
-        const turbForce = audio.treble * 5;
-        // Simple procedural turbulence based on position and time
-        const flow = Math.sin(x * turbScale + time) + Math.cos(y * turbScale + time);
-        
-        fluid.velX[i] += Math.cos(flow * Math.PI) * turbForce;
-        fluid.velY[i] += Math.sin(flow * Math.PI) * turbForce;
-    }
+  stirFluid(grid, mouse);
 
-    ctx.fillStyle = COLOR_STROKE;
-    
-    for (let p of fluid.particles) {
-        const gx = Math.floor(p.x / fluid.res);
-        const gy = Math.floor(p.y / fluid.res);
-        if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
-            const index = gx + gy * cols;
-            p.vx += fluid.velX[index] * 0.2;
-            p.vy += fluid.velY[index] * 0.2;
-        }
-        p.x += p.vx * fit;
-        p.y += p.vy * fit;
-        p.vx *= 0.95; 
-        p.vy *= 0.95;
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
-        const speed = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
-        const waveIdx = Math.floor(map(p.x, 0, width, 0, audio.waveform.length));
-        const waveVal = Math.abs(audio.waveform[waveIdx] / 128 - 1);
-        const size = (Math.min(3, Math.max(0.5, speed * 0.5)) + waveVal * 4) * Math.max(fit, 0.4);
-        const alpha = Math.min(1, speed * 0.2 + 0.1 + audio.volume * 0.5);
-        ctx.globalAlpha = alpha;
-        ctx.fillRect(p.x, p.y, size, size);
-    }
-    ctx.globalAlpha = 1;
+  if (audio.flux > 0.25) {
+    boomFluid(grid, audio.flux);
+  }
 
-    drawEquationOverlay(ctx, width, height, META.fluid.formula, {
-        F: audio.flux
-    });
+  diffuseFluid(grid, time, audio);
+  advectFluid(ctx, grid, audio);
+
+  drawEquationOverlay({ ctx, width, height }, META.fluid.formula, {
+    F: audio.flux,
+  });
 };
 
 /* --- 11. Vector (Polar FFT) --- */
 const drawPolarSpectrum = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
-    const cx = width / 2;
-    const cy = height / 2;
-    const radius = Math.min(width, height) * 0.35;
-    
-    ctx.strokeStyle = COLOR_STROKE;
-    ctx.lineWidth = 1.5;
-    
-    // Polar Transformation: (Freq Magnitude, Freq Bin) -> (r, theta)
-    // r = BaseRadius + Magnitude[f]
-    // theta = f * 2PI
-    
-    ctx.beginPath();
-    const len = audio.fft.length;
-    // We mirror the spectrum to close the loop smoothly
-    
-    for (let i = 0; i <= len * 2; i++) {
-        // Wrap index around 0-len-0 (Triangle wave indexing)
-        let idx = i % (len * 2);
-        if (idx >= len) idx = (len * 2) - idx - 1;
-        
-        const angle = map(i, 0, len * 2, 0, Math.PI * 2);
-        const mag = audio.fft[idx] / 255.0; // 0 to 1
-        
-        // Apply Flux to expand the ring
-        const r = radius + (mag * 100 * audio.volume) + (audio.flux * 20);
-        
-        const x = cx + Math.cos(angle + time * 0.5) * r;
-        const y = cy + Math.sin(angle + time * 0.5) * r;
-        
-        // Mouse warp
-        const d = dist(x, y, mouse.x, mouse.y);
-        let mx = x, my = y;
-        if (d < 100) {
-            const pull = (100 - d) / 100;
-            mx += (mouse.x - x) * pull;
-            my += (mouse.y - y) * pull;
-        }
+  const cx = width / 2;
+  const cy = height / 2;
+  const radius = Math.min(width, height) * 0.35;
 
-        if (i === 0) ctx.moveTo(mx, my);
-        else ctx.lineTo(mx, my);
+  ctx.strokeStyle = COLOR_STROKE;
+  ctx.lineWidth = 1.5;
+
+  // Polar Transformation: (Freq Magnitude, Freq Bin) -> (r, theta)
+  // r = BaseRadius + Magnitude[f]
+  // theta = f * 2PI
+
+  ctx.beginPath();
+  const len = audio.fft.length;
+  // We mirror the spectrum to close the loop smoothly
+
+  for (let i = 0; i <= len * 2; i++) {
+    // Wrap index around 0-len-0 (Triangle wave indexing)
+    let idx = i % (len * 2);
+    if (idx >= len) {
+      idx = len * 2 - idx - 1;
     }
-    ctx.closePath();
-    ctx.stroke();
-    
-    // Draw Center "Singularity" driven by Bass
-    const core = audio.bass * 20;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(cx, cy, core, 0, Math.PI*2);
-    ctx.fill();
 
-    drawEquationOverlay(ctx, width, height, META.vector.formula, {
-        f: `0–${(audio.sampleRate / 2000).toFixed(1)} kHz`,
-        R: radius.toFixed(0)
-    });
+    const angle = map(i, [0, len * 2], [0, Math.PI * 2]);
+    const mag = audio.fft[idx] / 255.0; // 0 to 1
+
+    // Apply Flux to expand the ring
+    const r = radius + mag * 100 * audio.volume + audio.flux * 20;
+
+    const x = cx + Math.cos(angle + time * 0.5) * r;
+    const y = cy + Math.sin(angle + time * 0.5) * r;
+
+    // Mouse warp
+    const d = dist(x, y, mouse.x, mouse.y);
+    let mx = x,
+      my = y;
+    if (d < 100) {
+      const pull = (100 - d) / 100;
+      mx += (mouse.x - x) * pull;
+      my += (mouse.y - y) * pull;
+    }
+
+    if (i === 0) {
+      ctx.moveTo(mx, my);
+    } else {
+      ctx.lineTo(mx, my);
+    }
+  }
+  ctx.closePath();
+  ctx.stroke();
+
+  // Draw Center "Singularity" driven by Bass
+  const core = audio.bass * 20;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(cx, cy, core, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawEquationOverlay({ ctx, width, height }, META.vector.formula, {
+    f: `0–${(audio.sampleRate / 2000).toFixed(1)} kHz`,
+    R: radius.toFixed(0),
+  });
 };
 
 /* --- 12. Lattice (Euler Tonnetz) --- */
 const drawTonnetz = ({ ctx, width, height, mouse, audio }: SimulationContext) => {
-    // Right = perfect fifth (+7), down-right = major third (+4), up-right = minor third (+3).
-    const chroma = audio.chroma;
-    let peakClass = -1;
-    let peak = 0;
-    for (let c = 0; c < 12; c++) if (chroma[c] > peak) { peak = chroma[c]; peakClass = c; }
-
-    const reach = 5;
-    const size = Math.min(width / (2 * reach * 1.5 + 2), height / (2 * reach * 0.866 + 2));
-    const cx = width / 2;
-    const cy = height / 2;
-
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '10px Geist, sans-serif';
-
-    const place = (i: number, j: number) => ({
-        x: cx + (i + j * 0.5) * size,
-        y: cy + j * size * 0.866,
-    });
-
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let j = -reach; j <= reach; j++) {
-        for (let i = -reach; i <= reach; i++) {
-            const a = place(i, j);
-            for (const [di, dj] of [[1, 0], [0, 1], [1, -1]]) {
-                if (Math.abs(i + di) > reach || Math.abs(j + dj) > reach) continue;
-                const b = place(i + di, j + dj);
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
-            }
-        }
+  // Right = perfect fifth (+7), down-right = major third (+4), up-right = minor third (+3).
+  const chroma = audio.chroma;
+  let peakClass = -1;
+  let peak = 0;
+  for (let c = 0; c < 12; c++) {
+    if (chroma[c] > peak) {
+      peak = chroma[c];
+      peakClass = c;
     }
-    ctx.stroke();
+  }
 
-    for (let j = -reach; j <= reach; j++) {
-        for (let i = -reach; i <= reach; i++) {
-            const { x, y } = place(i, j);
-            const pc = (((i * 7) + (j * 4)) % 12 + 12) % 12;
-            const intensity = chroma[pc];
+  const reach = 5;
+  const size = Math.min(width / (2 * reach * 1.5 + 2), height / (2 * reach * 0.866 + 2));
+  const cx = width / 2;
+  const cy = height / 2;
 
-            const d = dist(x, y, mouse.x, mouse.y);
-            const hover = d < 40 ? (40 - d) / 40 : 0;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '10px Geist, sans-serif';
 
-            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, 0.2 + intensity + hover)})`;
-            ctx.beginPath();
-            ctx.arc(x, y, 2 + intensity * size * 0.4 + hover * 5, 0, Math.PI * 2);
-            ctx.fill();
+  const place = (i: number, j: number) => ({
+    x: cx + (i + j * 0.5) * size,
+    y: cy + j * size * 0.866,
+  });
 
-            if (!ctx.canvas.dataset.bare && (intensity > 0.5 || hover > 0.5)) {
-                ctx.fillStyle = '#09090b';
-                ctx.fillText(PITCH_NAMES[pc], x, y);
-            }
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let j = -reach; j <= reach; j++) {
+    for (let i = -reach; i <= reach; i++) {
+      const a = place(i, j);
+      for (const [di, dj] of [
+        [1, 0],
+        [0, 1],
+        [1, -1],
+      ]) {
+        if (Math.abs(i + di) > reach || Math.abs(j + dj) > reach) {
+          continue;
         }
+        const b = place(i + di, j + dj);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+      }
     }
+  }
+  ctx.stroke();
 
-    drawEquationOverlay(ctx, width, height, META.lattice.formula, {
-        Peak: peakClass >= 0 ? PITCH_NAMES[peakClass] : "–",
-        f: `${audio.peakHz.toFixed(0)} Hz`
-    });
+  for (let j = -reach; j <= reach; j++) {
+    for (let i = -reach; i <= reach; i++) {
+      const { x, y } = place(i, j);
+      const pc = (((i * 7 + j * 4) % 12) + 12) % 12;
+      const intensity = chroma[pc];
+
+      const d = dist(x, y, mouse.x, mouse.y);
+      const hover = d < 40 ? (40 - d) / 40 : 0;
+
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, 0.2 + intensity + hover)})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 2 + intensity * size * 0.4 + hover * 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (!ctx.canvas.dataset.bare && (intensity > 0.5 || hover > 0.5)) {
+        ctx.fillStyle = '#09090b';
+        ctx.fillText(PITCH_NAMES[pc], x, y);
+      }
+    }
+  }
+
+  drawEquationOverlay({ ctx, width, height }, META.lattice.formula, {
+    Peak: peakClass >= 0 ? PITCH_NAMES[peakClass] : '–',
+    f: `${audio.peakHz.toFixed(0)} Hz`,
+  });
 };
 
 /* --- 13. Attractor (Lorenz System / Chaos) --- */
 type Vec3 = [number, number, number];
 interface AttractorState {
-    p: Vec3;
-    lastTime: number;
-    pending: number;
-    points: Point3D[];
+  p: Vec3;
+  lastTime: number;
+  pending: number;
+  points: Point3D[];
 }
 const attractorState: AttractorState = {
-    p: [0.1, 0, 0],
-    lastTime: 0,
-    pending: 0,
-    points: []
+  p: [0.1, 0, 0],
+  lastTime: 0,
+  pending: 0,
+  points: [],
 };
 
-const LORENZ_STEP = 0.01;   // integration step, in system time
-const LORENZ_TRAIL = 500;   // points kept
+const LORENZ_STEP = 0.01; // integration step, in system time
+const LORENZ_TRAIL = 500; // points kept
 
 const lorenzStep = (p: Vec3, sigma: number, rho: number, beta: number): Vec3 => {
-    const f = (v: Vec3): Vec3 => [sigma * (v[1] - v[0]), v[0] * (rho - v[2]) - v[1], v[0] * v[1] - beta * v[2]];
-    const add = (v: Vec3, d: Vec3, k: number): Vec3 => [v[0] + d[0] * k, v[1] + d[1] * k, v[2] + d[2] * k];
-    const h = LORENZ_STEP;
-    const k1 = f(p);
-    const k2 = f(add(p, k1, h / 2));
-    const k3 = f(add(p, k2, h / 2));
-    const k4 = f(add(p, k3, h));
-    return [
-        p[0] + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
-        p[1] + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]),
-        p[2] + (h / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]),
-    ];
+  const f = (v: Vec3): Vec3 => [sigma * (v[1] - v[0]), v[0] * (rho - v[2]) - v[1], v[0] * v[1] - beta * v[2]];
+  const add = (v: Vec3, d: Vec3, k: number): Vec3 => [v[0] + d[0] * k, v[1] + d[1] * k, v[2] + d[2] * k];
+  const h = LORENZ_STEP;
+  const k1 = f(p);
+  const k2 = f(add(p, k1, h / 2));
+  const k3 = f(add(p, k2, h / 2));
+  const k4 = f(add(p, k3, h));
+  return [
+    p[0] + (h / 6) * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
+    p[1] + (h / 6) * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1]),
+    p[2] + (h / 6) * (k1[2] + 2 * k2[2] + 2 * k3[2] + k4[2]),
+  ];
 };
 
 const drawLorenz = ({ ctx, width, height, time, mouse, audio }: SimulationContext) => {
-    // Classic parameters. Bass raises the Rayleigh number rho.
-    const sigma = 10;
-    const beta = 8 / 3;
-    const rho = 28 + (audio.bass * 20);
+  // Classic parameters. Bass raises the Rayleigh number rho.
+  const sigma = 10;
+  const beta = 8 / 3;
+  const rho = 28 + audio.bass * 20;
 
-    // Runge-Kutta 4 at a fixed step; treble sets how fast system time runs against clock time.
-    const elapsed = Math.max(0, Math.min(0.1, time - attractorState.lastTime));
-    attractorState.lastTime = time;
-    attractorState.pending += elapsed * (0.8 + audio.treble * 0.8);
-    if (attractorState.points.length === 0) attractorState.pending += LORENZ_STEP * 300;
+  // Runge-Kutta 4 at a fixed step; treble sets how fast system time runs against clock time.
+  const elapsed = Math.max(0, Math.min(0.1, time - attractorState.lastTime));
+  attractorState.lastTime = time;
+  attractorState.pending += elapsed * (0.8 + audio.treble * 0.8);
+  if (attractorState.points.length === 0) {
+    attractorState.pending += LORENZ_STEP * 300;
+  }
 
-    while (attractorState.pending >= LORENZ_STEP) {
-        attractorState.pending -= LORENZ_STEP;
-        attractorState.p = lorenzStep(attractorState.p, sigma, rho, beta);
-        const [x, y, z] = attractorState.p;
-        attractorState.points.push({ x, y, z });
-        if (attractorState.points.length > LORENZ_TRAIL) attractorState.points.shift();
+  while (attractorState.pending >= LORENZ_STEP) {
+    attractorState.pending -= LORENZ_STEP;
+    attractorState.p = lorenzStep(attractorState.p, sigma, rho, beta);
+    const [x, y, z] = attractorState.p;
+    attractorState.points.push({ x, y, z });
+    if (attractorState.points.length > LORENZ_TRAIL) {
+      attractorState.points.shift();
+    }
+  }
+
+  const fit = fitTo(ctx, width, height, 300);
+
+  ctx.strokeStyle = COLOR_STROKE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+
+  const rX = time * 0.2;
+  const rY = time * 0.3;
+
+  for (let i = 0; i < attractorState.points.length; i++) {
+    const p = attractorState.points[i];
+
+    // Lorenz z is usually 0-50, x/y are -20 to 20
+    let pt: Point3D = { x: p.x * 5 * fit, y: p.y * 5 * fit, z: (p.z - 25) * 5 * fit };
+    pt = rotateY(pt, rY);
+    pt = rotateX(pt, rX);
+
+    const proj = project(pt.x, pt.y, pt.z, { width, height, fov: 500 * fit });
+
+    let sx = proj.x;
+    let sy = proj.y;
+    const d = dist(sx, sy, mouse.x, mouse.y);
+    if (d < 100) {
+      const pull = (100 - d) / 100;
+      sx += (mouse.x - sx) * pull * 0.2;
+      sy += (mouse.y - sy) * pull * 0.2;
     }
 
-    const fit = fitTo(ctx, width, height, 300);
-
-    ctx.strokeStyle = COLOR_STROKE;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-
-    const rX = time * 0.2;
-    const rY = time * 0.3;
-
-    for (let i = 0; i < attractorState.points.length; i++) {
-        const p = attractorState.points[i];
-
-        // Lorenz z is usually 0-50, x/y are -20 to 20
-        let pt: Point3D = { x: p.x * 5 * fit, y: p.y * 5 * fit, z: (p.z - 25) * 5 * fit };
-        pt = rotateY(pt, rY);
-        pt = rotateX(pt, rX);
-
-        const proj = project(pt.x, pt.y, pt.z, width, height, 500 * fit);
-
-        let sx = proj.x;
-        let sy = proj.y;
-        const d = dist(sx, sy, mouse.x, mouse.y);
-        if (d < 100) {
-            const pull = (100 - d) / 100;
-            sx += (mouse.x - sx) * pull * 0.2;
-            sy += (mouse.y - sy) * pull * 0.2;
-        }
-
-        if (i === 0) ctx.moveTo(sx, sy);
-        else ctx.lineTo(sx, sy);
+    if (i === 0) {
+      ctx.moveTo(sx, sy);
+    } else {
+      ctx.lineTo(sx, sy);
     }
-    ctx.stroke();
+  }
+  ctx.stroke();
 
-    drawEquationOverlay(ctx, width, height, META.chaos.formula, {
-        ρ: rho.toFixed(1),
-        σ: sigma
-    });
+  drawEquationOverlay({ ctx, width, height }, META.chaos.formula, {
+    ρ: rho.toFixed(1),
+    σ: sigma,
+  });
 };
-
 
 export const simulations: SimulationDef[] = [
   { id: 1, ...META.ridge, draw: drawRidges },

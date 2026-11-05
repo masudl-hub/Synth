@@ -5,16 +5,32 @@ export interface EnvelopeShape {
   release: number;
 }
 
-type Param = Pick<AudioParam, 'setValueAtTime' | 'linearRampToValueAtTime' | 'exponentialRampToValueAtTime' | 'cancelScheduledValues'>;
+/** The part of an `AudioParam` an envelope writes to. */
+export type EnvelopeParam = Pick<
+  AudioParam,
+  'setValueAtTime' | 'linearRampToValueAtTime' | 'exponentialRampToValueAtTime' | 'cancelScheduledValues'
+>;
+
+/** A note's gain curve: it starts at `time`, its key is held `duration` seconds, and it peaks at `peak`. */
+export interface EnvelopeNote {
+  time: number;
+  duration: number;
+  shape: EnvelopeShape;
+  peak: number;
+}
 
 /** One breakpoint, `at` seconds after the note starts, reached from the one before by `ramp`. */
-interface Point { at: number; value: number; ramp: 'set' | 'linear' | 'exp' }
+interface Point {
+  at: number;
+  value: number;
+  ramp: 'set' | 'linear' | 'exp';
+}
 
 const FLOOR = 0.001;
 
 /** The level an exponential decay from `peak` to `sustain * peak` over `decay` seconds has reached after `t` seconds. */
 const decayed = (peak: number, sustain: number, decay: number, t: number) =>
-  peak * Math.pow(Math.max(FLOOR, sustain), Math.min(1, Math.max(0, t) / decay));
+  peak * Math.max(FLOOR, sustain) ** Math.min(1, Math.max(0, t) / decay);
 
 /**
  * One note's gain: attack, decay to sustain, hold, release. A note shorter than attack plus decay is cut off
@@ -35,31 +51,43 @@ function points(duration: number, { attack, decay, sustain, release }: EnvelopeS
     }
   }
   // Down to true silence, so the oscillator stops on zero rather than on a tiny step.
-  out.push({ at: duration + release, value: FLOOR, ramp: 'exp' }, { at: duration + release + 0.01, value: 0, ramp: 'linear' });
+  out.push(
+    { at: duration + release, value: FLOOR, ramp: 'exp' },
+    { at: duration + release + 0.01, value: 0, ramp: 'linear' },
+  );
   return out;
 }
 
 /** The level the curve has `t` seconds after the note starts. */
 function levelAt(curve: Point[], t: number) {
   for (let i = 1; i < curve.length; i++) {
-    const a = curve[i - 1], b = curve[i];
-    if (t > b.at) continue;
-    if (b.ramp === 'set') return t < b.at ? a.value : b.value;
+    const a = curve[i - 1],
+      b = curve[i];
+    if (t > b.at) {
+      continue;
+    }
+    if (b.ramp === 'set') {
+      return t < b.at ? a.value : b.value;
+    }
     const f = b.at > a.at ? (t - a.at) / (b.at - a.at) : 1;
-    return b.ramp === 'linear' || a.value <= 0 ? a.value + (b.value - a.value) * f : a.value * Math.pow(b.value / a.value, f);
+    return b.ramp === 'linear' || a.value <= 0 ? a.value + (b.value - a.value) * f : a.value * (b.value / a.value) ** f;
   }
   return 0;
 }
 
-function apply(gain: Param, time: number, curve: Point[]) {
-  curve.forEach(({ at, value, ramp }) => {
-    if (ramp === 'set') gain.setValueAtTime(value, time + at);
-    else if (ramp === 'linear') gain.linearRampToValueAtTime(value, time + at);
-    else gain.exponentialRampToValueAtTime(Math.max(FLOOR, value), time + at);
-  });
+function apply(gain: EnvelopeParam, time: number, curve: Point[]) {
+  for (const { at, value, ramp } of curve) {
+    if (ramp === 'set') {
+      gain.setValueAtTime(value, time + at);
+    } else if (ramp === 'linear') {
+      gain.linearRampToValueAtTime(value, time + at);
+    } else {
+      gain.exponentialRampToValueAtTime(Math.max(FLOOR, value), time + at);
+    }
+  }
 }
 
-export function scheduleEnvelope(gain: Param, time: number, duration: number, shape: EnvelopeShape, peak: number) {
+export function scheduleEnvelope(gain: EnvelopeParam, { time, duration, shape, peak }: EnvelopeNote) {
   apply(gain, time, points(duration, shape, peak));
 }
 
@@ -69,16 +97,27 @@ export function scheduleEnvelope(gain: Param, time: number, duration: number, sh
  * on the level it would have reached, so nothing jumps, without `cancelAndHoldAtTime` (which Firefox lacks). Returns
  * the note's new total length, or null when it has already gone silent.
  */
-export function extendEnvelope(gain: Param, time: number, oldDuration: number, at: number, duration: number, shape: EnvelopeShape, peak: number) {
+export function extendEnvelope(
+  gain: EnvelopeParam,
+  { time, duration: oldDuration, shape, peak }: EnvelopeNote,
+  at: number,
+  duration: number,
+) {
   const before = points(oldDuration, shape, peak);
   const t = at - time;
   const segment = before.find((p) => p.at >= t);
-  if (t <= 0 || !segment || segment === before[before.length - 1]) return null;
+  if (t <= 0 || !segment || segment === before[before.length - 1]) {
+    return null;
+  }
   const level = levelAt(before, t);
   gain.cancelScheduledValues(at);
-  if (segment.ramp === 'linear') gain.linearRampToValueAtTime(level, at);
-  else if (segment.ramp === 'exp') gain.exponentialRampToValueAtTime(Math.max(FLOOR, level), at);
-  else gain.setValueAtTime(level, at);
+  if (segment.ramp === 'linear') {
+    gain.linearRampToValueAtTime(level, at);
+  } else if (segment.ramp === 'exp') {
+    gain.exponentialRampToValueAtTime(Math.max(FLOOR, level), at);
+  } else {
+    gain.setValueAtTime(level, at);
+  }
 
   const total = t + duration;
   const after = points(total, shape, peak);
@@ -88,6 +127,10 @@ export function extendEnvelope(gain: Param, time: number, oldDuration: number, a
     gain.exponentialRampToValueAtTime(Math.max(FLOOR, levelAt(after, t + 0.005)), at + 0.005);
     from = t + 0.005;
   }
-  apply(gain, time, after.filter((p) => p.at > from));
+  apply(
+    gain,
+    time,
+    after.filter((p) => p.at > from),
+  );
   return total;
 }
