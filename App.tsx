@@ -140,7 +140,8 @@ export default function App() {
             label="Start over"
             tooltip="Start over: new thread, and the patch is cleared unless you saved it"
             variant="ghost"
-            icon={<IconRefresh />}
+            // A full turn on every click.
+            icon={<IconRefresh style={{ transform: `rotate(${thread * 360}deg)`, transition: 'transform 500ms ease-in-out' }} />}
             onClick={startOver}
           />
           <ToggleButton
