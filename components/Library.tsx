@@ -1,6 +1,7 @@
 import React from 'react';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Text } from '@astryxdesign/core/Text';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { IconCheck, IconPlus, IconTrash } from '@tabler/icons-react';
 import { SynthPatch } from '../types';
 
@@ -45,6 +46,7 @@ const barsLabel = (steps: number) => {
 export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurrentSaved, onSave, onLoad, onDelete }) => (
   <div className="library" role="list" aria-label="Patch library">
     <div role="listitem" className="library__item" style={{ ['--i' as string]: 0 }}>
+      <Tooltip content={isCurrentSaved ? 'This patch is already in your library' : 'Save the patch that is playing to your library'}>
       <button
         className="library__card library__card--save"
         onClick={onSave}
@@ -60,6 +62,7 @@ export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurre
           <span className="library__chip">{currentPatch?.name ?? 'No patch loaded'}</span>
         </span>
       </button>
+      </Tooltip>
     </div>
     {entries.map(({ patch, savedIndex }, i) => {
       const osc = patch.oscillator.type;
@@ -70,6 +73,7 @@ export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurre
           className="library__item"
           style={{ ['--i' as string]: i + 1 }}
         >
+          <Tooltip content={`Load ${patch.name}`}>
           <button className="library__card" onClick={() => onLoad(patch)}>
             <svg className="library__wave" viewBox="0 0 120 40" preserveAspectRatio="none" aria-hidden>
               <path className="midline" d="M0 20 H120" />
@@ -84,9 +88,10 @@ export const Library: React.FC<LibraryProps> = ({ entries, currentPatch, isCurre
               {savedIndex !== null && <span className="library__chip library__chip--mine">saved</span>}
             </span>
           </button>
+          </Tooltip>
           {savedIndex !== null && (
             <span className="library__delete">
-              <IconButton label={`Delete ${patch.name}`} size="sm" variant="ghost" icon={<IconTrash />}
+              <IconButton label={`Delete ${patch.name}`} tooltip="Delete from your library" size="sm" variant="ghost" icon={<IconTrash />}
                 onClick={() => onDelete(savedIndex)} />
             </span>
           )}

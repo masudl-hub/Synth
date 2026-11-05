@@ -15,6 +15,12 @@ body,
   height: 100%;
 }
 
+/* A sideways swipe moves the carousel; it must not also go back a page. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   background: var(--color-background-body);
@@ -662,6 +668,11 @@ dialog.astryx-dialog {
   width: 100%;
   padding-top: var(--spacing-8);
   border-top: 1px solid var(--color-border);
+}
+
+.article__studio {
+  margin-top: var(--spacing-8);
+  margin-bottom: var(--spacing-12);
 }
 
 .article__shapes {

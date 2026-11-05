@@ -5,7 +5,7 @@ import { IconButton } from '@astryxdesign/core/IconButton';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
 import { TextArea } from '@astryxdesign/core/TextArea';
-import { Token } from '@astryxdesign/core/Token';
+import { Tooltip } from '@astryxdesign/core/Tooltip';
 import { VStack } from '@astryxdesign/core/VStack';
 import { attachmentIssueText } from '@theoremjs/agents';
 import { createHttpTransport } from '@theoremjs/react/client';
@@ -31,12 +31,14 @@ interface ComposerProps {
   onPatch: (raw: unknown) => void;
   /** Changes to start a fresh thread (the page's reset button). */
   thread?: number;
+  /** Switches to ambient sound mode, where the microphone drives the visuals. */
+  onListen: () => void;
   /** The JSON the model has written so far while a reply streams (empty before the first token); null otherwise. */
   onStream: (draft: string | null) => void;
 }
 
 /** The synth profile's composer, on one line, with no transcript: replies land as patches. */
-export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch, onStream, thread: resetKey = 0 }) => {
+export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch, onStream, onListen, thread: resetKey = 0 }) => {
   const transport = useMemo(() => createHttpTransport({ endpoint: ENDPOINT }), []);
   const described = useTheoremInterface(transport);
   const [lost, setLost] = useState(0);
@@ -52,56 +54,22 @@ export const Composer: React.FC<ComposerProps> = ({ currentPatch, onPatch, onStr
   return (
     <ComposerBody
       key={`${resetKey}-${lost}`} transport={transport} iface={described.iface}
-      currentPatch={currentPatch} onPatch={onPatch} onStream={onStream}
+      currentPatch={currentPatch} onPatch={onPatch} onStream={onStream} onListen={onListen}
       resume={resume.current}
       onNewThread={(unsent) => { resume.current = unsent ?? null; setLost((n) => n + 1); }}
     />
   );
 };
 
-/** Records one voice note; `stop` resolves to the audio as a File. */
-function useVoiceNote(onNote: (file: File) => void) {
-  const [recording, setRecording] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
-  const chunks = useRef<Blob[]>([]);
-
-  const start = async () => {
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const rec = new MediaRecorder(stream);
-      chunks.current = [];
-      rec.ondataavailable = (e) => chunks.current.push(e.data);
-      rec.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const type = rec.mimeType || 'audio/webm';
-        onNote(new File(chunks.current, `voice-note.${type.includes('mp4') ? 'm4a' : 'webm'}`, { type }));
-      };
-      rec.start();
-      recorder.current = rec;
-      setRecording(true);
-    } catch {
-      setError('Microphone unavailable.');
-    }
-  };
-  const stop = () => {
-    recorder.current?.stop();
-    setRecording(false);
-  };
-  return { recording, error, toggle: () => (recording ? stop() : void start()) };
-}
-
 const ComposerBody: React.FC<ComposerProps & {
   resume: Unsent | null;
   onNewThread: (unsent?: Unsent) => void;
   transport: ReturnType<typeof createHttpTransport>;
   iface: Parameters<typeof useTheoremChat>[0]['iface'];
-}> = ({ transport, iface, currentPatch, onPatch, onStream, resume, onNewThread }) => {
+}> = ({ transport, iface, currentPatch, onPatch, onStream, onListen, resume, onNewThread }) => {
   const chat = useTheoremChat({ transport, iface, context: currentPatch ?? undefined });
   const handled = useRef<unknown>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const voice = useVoiceNote((file) => chat.setPendingVoice([file]));
 
   // A finished reply carries the patch as its last structured block.
   useEffect(() => {
@@ -148,7 +116,6 @@ const ComposerBody: React.FC<ComposerProps & {
   const problems = [
     ...chat.issues.map((i) => attachmentIssueText(i, chat.iface?.labels)),
     ...(chat.failure && !isThreadLost(chat.failure) ? [chat.failure.error] : []),
-    ...(voice.error ? [voice.error] : []),
   ];
 
   const send = () => {
@@ -187,7 +154,7 @@ const ComposerBody: React.FC<ComposerProps & {
     return () => el.removeEventListener('keydown', onKey);
   }, []);
 
-  const hasTray = chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0;
+  const hasTray = chat.pendingFiles.length > 0;
 
   return (
     <>
@@ -207,10 +174,6 @@ const ComposerBody: React.FC<ComposerProps & {
             <Thumbnail key={`${file.name}-${i}`} file={file}
               onRemove={() => chat.setPendingFiles((prev) => prev.filter((_, j) => j !== i))} />
           ))}
-          {chat.pendingVoice.map((file) => (
-            <Token key={file.name} size="sm" label="Voice note" icon={<IconMicrophone size={12} />}
-              onRemove={() => chat.setPendingVoice([])} />
-          ))}
         </HStack>
       )}
 
@@ -224,10 +187,11 @@ const ComposerBody: React.FC<ComposerProps & {
             e.target.value = '';
           }}
         />
-        <IconButton label="Attach image" variant="ghost" icon={<IconPaperclip />}
+        <IconButton label="Attach image" tooltip="Attach an image (up to two)" variant="ghost" icon={<IconPaperclip />}
           isDisabled={isStreaming} onClick={() => fileInput.current?.click()} />
 
         {loop && (
+          <Tooltip content="Loop length: how many bars the patch repeats">
           <Selector
             label={loop[1].label ?? 'Loop length'} isLabelHidden variant="ghost" placement="above"
             startIcon={<IconMetronome size={14} />}
@@ -240,6 +204,7 @@ const ComposerBody: React.FC<ComposerProps & {
             }]}
             onChange={(value) => chat.optionChoices?.onChange(loop[0], value)}
           />
+          </Tooltip>
         )}
 
         <TextArea
@@ -252,13 +217,12 @@ const ComposerBody: React.FC<ComposerProps & {
         />
 
         {isStreaming ? (
-          <IconButton label="Stop" variant="primary" icon={<IconPlayerStopFilled />} onClick={chat.handleStop} />
+          <IconButton label="Stop" tooltip="Stop writing" variant="primary" icon={<IconPlayerStopFilled />} onClick={chat.handleStop} />
         ) : hasContent ? (
-          <IconButton label="Send" variant="primary" icon={<IconArrowUp />} onClick={send} />
+          <IconButton label="Send" tooltip="Send" variant="primary" icon={<IconArrowUp />} onClick={send} />
         ) : (
-          <IconButton label={voice.recording ? 'Stop recording' : 'Record voice'}
-            variant={voice.recording ? 'destructive' : 'ghost'}
-            icon={voice.recording ? <IconPlayerStopFilled /> : <IconMicrophone />} onClick={voice.toggle} />
+          <IconButton label="Ambient sound" tooltip="Ambient sound: the visuals react to the sound around you" variant="ghost"
+            icon={<IconMicrophone />} onClick={onListen} />
         )}
       </HStack>
     </VStack>
@@ -278,7 +242,7 @@ const Thumbnail: React.FC<{ file: File; onRemove: () => void }> = ({ file, onRem
   return (
     <span className="composer__thumb">
       {url && <img src={url} alt={file.name} />}
-      <IconButton label={`Remove ${file.name}`} size="sm" variant="secondary" icon={<IconX />} onClick={onRemove} />
+      <IconButton label={`Remove ${file.name}`} tooltip="Remove this image" size="sm" variant="secondary" icon={<IconX />} onClick={onRemove} />
     </span>
   );
 };

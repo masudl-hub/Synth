@@ -154,8 +154,8 @@ export const ControlStrip: React.FC<ControlStripProps> = ({
             <JsonEditor label="Patch JSON" value={jsonCode} onChange={setJsonCode} />
             {jsonError && <Text type="supporting" size="xsm" style={{ color: 'var(--color-text-error)' }}>{jsonError}</Text>}
             <HStack gap={2} justify="end">
-              <Button label="Cancel" variant="ghost" onClick={() => setIsEditing(false)} />
-              <Button label="Apply" variant="primary" onClick={applyEdit} />
+              <Button label="Cancel" tooltip="Close without changing the patch" variant="ghost" onClick={() => setIsEditing(false)} />
+              <Button label="Apply" tooltip="Play this patch" variant="primary" onClick={applyEdit} />
             </HStack>
           </VStack>
           <VStack gap={3} isScrollable className="patch-editor__docs">

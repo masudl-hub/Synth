@@ -32,29 +32,49 @@ export const SimCarousel: React.FC<SimCarouselProps> = ({ active, onActiveChange
 
   const step = useCallback((dir: 1 | -1) => onActiveChange((active + dir + count) % count), [active, count, onActiveChange]);
 
-  const onWheel = (e: React.WheelEvent) => {
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    const now = performance.now();
-    if (Math.abs(delta) < 8 || now - lastWheel.current < WHEEL_COOLDOWN_MS) return;
-    lastWheel.current = now;
-    step(delta > 0 ? 1 : -1);
-  };
-
-  // Horizontal swipe on touch screens.
+  // Scrolling or swiping anywhere moves the carousel, except over the composer, menus and dialogs.
+  const stepRef = useRef(step);
+  stepRef.current = step;
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType !== 'mouse') swipeStart.current = { x: e.clientX, y: e.clientY };
-  };
-  const onPointerUp = (e: React.PointerEvent) => {
-    const start = swipeStart.current;
-    swipeStart.current = null;
-    if (!start) return;
-    const dx = e.clientX - start.x;
-    if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
-      swiped.current = true;
-      step(dx < 0 ? 1 : -1);
-    }
-  };
+  useEffect(() => {
+    const ignored = (target: EventTarget | null) =>
+      !!(target as Element | null)?.closest?.('.dock, dialog, [role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"]');
+    const onWheel = (e: WheelEvent) => {
+      if (ignored(e.target)) return;
+      // Nothing here scrolls, so this also stops a sideways swipe from going back a page.
+      e.preventDefault();
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      const now = performance.now();
+      if (Math.abs(delta) < 8 || now - lastWheel.current < WHEEL_COOLDOWN_MS) return;
+      lastWheel.current = now;
+      stepRef.current(delta > 0 ? 1 : -1);
+    };
+    // Horizontal swipe on touch screens.
+    const onPointerDown = (e: PointerEvent) => {
+      swipeStart.current = e.pointerType !== 'mouse' && !ignored(e.target) ? { x: e.clientX, y: e.clientY } : null;
+    };
+    const onPointerUp = (e: PointerEvent) => {
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      if (!start) return;
+      const dx = e.clientX - start.x;
+      if (Math.abs(dx) > SWIPE_MIN_PX && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
+        swiped.current = true;
+        stepRef.current(dx < 0 ? 1 : -1);
+      }
+    };
+    const onPointerCancel = () => { swipeStart.current = null; };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+    };
+  }, []);
   // A swipe that ends on a side tile must not also select it.
   const swiped = useRef(false);
   const onClickCapture = (e: React.MouseEvent) => {
@@ -75,8 +95,7 @@ export const SimCarousel: React.FC<SimCarouselProps> = ({ active, onActiveChange
   }, [step]);
 
   return (
-    <div ref={rootRef} className="sim-carousel" onWheel={onWheel}
-      onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => { swipeStart.current = null; }} onClickCapture={onClickCapture} role="group" aria-roledescription="carousel" aria-label="Simulations">
+    <div ref={rootRef} className="sim-carousel" onClickCapture={onClickCapture} role="group" aria-roledescription="carousel" aria-label="Simulations">
       {simulations.map((sim, i) => {
         const offset = offsetOf(i, active, count);
         const distance = Math.abs(offset);

@@ -4,6 +4,7 @@ import 'katex/dist/katex.min.css';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
+import { Button } from '@astryxdesign/core/Button';
 import { HStack } from '@astryxdesign/core/HStack';
 import { VStack } from '@astryxdesign/core/VStack';
 import { SignalDiagram } from './SignalDiagram';
@@ -77,7 +78,7 @@ const Shapes: React.FC<{ sim: SimulationDef; audioDataRef: React.MutableRefObjec
   );
 };
 
-export const Article: React.FC = () => {
+export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }) => {
   // The canvases are fed Porcelain Beats played silently through the real analyser. Until the browser lets audio start,
   // a soft held tone stands in.
   const audioDataRef = useRef<AudioFeatures>(demoFeatures(0));
@@ -149,6 +150,8 @@ export const Article: React.FC = () => {
           </HStack>
         );
       })}
+
+      <Button label="Open the synth studio" tooltip="Back to the studio, to make a sound of your own" variant="primary" onClick={onOpenStudio} className="article__studio" />
     </VStack>
   </article>
   );

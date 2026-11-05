@@ -7,7 +7,7 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { HStack } from '@astryxdesign/core/HStack';
-import { IconArticle, IconDeviceAudioTape, IconMicrophone, IconRefresh } from '@tabler/icons-react';
+import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarRightCollapse, IconRefresh } from '@tabler/icons-react';
 import { themes, defaultThemeSlug } from './astryx-themes';
 import { SimCarousel } from './components/SimCarousel';
 import { simulations } from './simulations/logic';
@@ -115,20 +115,12 @@ export default function App() {
           />
           <ToggleButton
             label="Why this exists"
-            tooltip="Why this exists"
-            icon={<IconArticle />}
+            tooltip={showArticle ? 'Back to the studio' : 'Why this exists'}
+            icon={<IconLayoutSidebarLeftCollapse />}
+            pressedIcon={<IconLayoutSidebarRightCollapse />}
             isIconOnly
             isPressed={showArticle}
             onPressedChange={goTo}
-          />
-          <ToggleButton
-            label={audioSource === 'mic' ? 'Listening with the microphone' : 'AI synth'}
-            tooltip={audioSource === 'mic' ? 'Microphone · click for AI synth' : 'AI synth · click to listen with the microphone'}
-            icon={<IconDeviceAudioTape />}
-            pressedIcon={<IconMicrophone />}
-            isIconOnly
-            isPressed={audioSource === 'mic'}
-            onPressedChange={listen}
           />
         </HStack>
         <VStack gap={0.5} align="center" className="app__header">
@@ -157,13 +149,13 @@ export default function App() {
           <div className="dock__float">
             {/* Both stay mounted: the composer keeps its thread while the mic is on. */}
             <div hidden={audioSource === 'mic'} className="dock__slot">
-              <Composer currentPatch={currentPatch} onPatch={onGenerated} onStream={setStream} thread={thread} />
+              <Composer currentPatch={currentPatch} onPatch={onGenerated} onStream={setStream} onListen={() => listen(true)} thread={thread} />
             </div>
-            {audioSource === 'mic' && <MicPanel isLive={isMicLive} onStart={startMic} />}
+            {audioSource === 'mic' && <MicPanel isLive={isMicLive} onStart={startMic} onBack={() => listen(false)} />}
           </div>
         </div>
 
-        {showArticle && <Article />}
+        {showArticle && <Article onOpenStudio={() => goTo(false)} />}
 
         <StreamReadout text={audioSource === 'synth' ? stream : null} />
 
