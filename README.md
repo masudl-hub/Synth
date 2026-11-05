@@ -105,4 +105,4 @@ To limit generations, create your own KV namespace with `npx wrangler kv namespa
 
 ## Credits
 
-The canvas shapes are inspired by Vanzyst's *36 formes vectorielles technologiques*. The formulas, and the papers they come from, are cited on the [/why](https://cymatics.masudlewis.com/why) page.
+The formulas, and the papers they come from, are cited on the [/why](https://cymatics.masudlewis.com/why) page.

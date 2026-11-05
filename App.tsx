@@ -252,7 +252,7 @@ const Header: React.FC = () => (
 const Footer: React.FC = () => (
   <VStack gap={0.5} align="center" className="footer">
     <Text type="supporting" size="2xs">
-      Formes inspirées des 36 formes vectorielles technologiques de Vanzyst | Powered by{' '}
+      Powered by{' '}
       <Link href="https://theorem.masudlewis.com" target="_blank" className="footer__link">
         Theorem
       </Link>

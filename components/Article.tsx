@@ -297,9 +297,6 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
             Code written with Gemini in Google AI Studio and Claude Code.
           </Text>
           <Text type="supporting" size="xsm">
-            Formes inspirées des 36 formes vectorielles technologiques de Vanzyst.
-          </Text>
-          <Text type="supporting" size="xsm">
             Agent powered by{' '}
             <Link href="https://theorem.masudlewis.com" target="_blank" className="footer__link">
               Theorem
