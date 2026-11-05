@@ -57,8 +57,7 @@ export const Article: React.FC = () => (
         <P>In late 2025, I had a bit of time and access to Google&rsquo;s AI Studio, and I thought, &ldquo;what if I could recreate these visuals?&rdquo; Not only the way equaliser videos on YouTube do, but other ways, too. I only knew sand vibrating on a plate, so that was my starting point, and the agent was pleasantly eager to explore other patterns with me.</P>
         <P>Well, surprise: that eagerness didn&rsquo;t translate to thoroughness. The original visuals were faked, based on hardly anything from the sound. That felt dishonest, and, selectively subscribing to John Ruskin&rsquo;s 1849 treatise <em>The Seven Lamps of Architecture</em>, the Lamp of Truth, I wanted visuals driven by real maths and physics.</P>
         <P>So Gemini and I went back and forth and the truth started to emerge. I can&rsquo;t pretend I understand everything that&rsquo;s happening here. I wish I did, and I endeavour to. What captivates me is how human-AI collaboration can alchemise curiosity.</P>
-        <P>But I got even more curious. If sound could be visualised through code, could sound itself be code? This might be obvious, but I&rsquo;m a theatre-turned-architecture kid who enjoys ceramics. My &ldquo;sound design&rdquo; experience is iMovie and creating transitions.</P>
-        <P>You&rsquo;ll find this with a lot of my work: as a non-coder, declarative code resonates. Synth patches as JSON an agent can write and the browser can perform.</P>
+        <P>But I got even more curious. If sound could be visualised through code, could sound itself be code? Probably obvious if you do this sort of thing, but a sound can be described as data. JSON! Of course. An LLM can produce it cleanly, a human can read and edit it, and the browser can play it without guesses.</P>
       </VStack>
 
       <VStack gap={3} align="stretch" className="article__how">
