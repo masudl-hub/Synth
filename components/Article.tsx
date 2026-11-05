@@ -84,7 +84,10 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
   const audioDataRef = useRef<AudioFeatures>(demoFeatures(0));
   useEffect(() => {
     const engine = new SynthEngine(true);
-    engine.loadPatch(PORCELAIN_BEATS);
+    // The tiles are small, so the beat is calmer here: slower, darker and quieter than the preset.
+    engine.loadPatch({ ...PORCELAIN_BEATS, bpm: 90 });
+    engine.setFilterFreq(1200);
+    engine.setVolume(0.4);
     let started = false;
     const start = () => {
       void engine.resume().then(() => {
