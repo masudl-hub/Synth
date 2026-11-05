@@ -1055,6 +1055,9 @@ const drawLorenz = ({ ctx, width, height, time, mouse, audio }: SimulationContex
         if (attractorState.points.length > LORENZ_TRAIL) attractorState.points.shift();
     }
 
+    // The attractor is sized for a tile of about 600px; smaller canvases shrink it to fit.
+    const fit = Math.min(1, Math.min(width, height) / 600);
+
     ctx.strokeStyle = COLOR_STROKE;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -1066,11 +1069,11 @@ const drawLorenz = ({ ctx, width, height, time, mouse, audio }: SimulationContex
         const p = attractorState.points[i];
 
         // Lorenz z is usually 0-50, x/y are -20 to 20
-        let pt: Point3D = { x: p.x * 5, y: p.y * 5, z: (p.z - 25) * 5 };
+        let pt: Point3D = { x: p.x * 5 * fit, y: p.y * 5 * fit, z: (p.z - 25) * 5 * fit };
         pt = rotateY(pt, rY);
         pt = rotateX(pt, rX);
 
-        const proj = project(pt.x, pt.y, pt.z, width, height, 500);
+        const proj = project(pt.x, pt.y, pt.z, width, height, 500 * fit);
 
         let sx = proj.x;
         let sy = proj.y;

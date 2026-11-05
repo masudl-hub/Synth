@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Tile } from './Tile';
 import { simulations } from '../simulations/logic';
 import { AudioFeatures } from '../types';
 
 interface SimCarouselProps {
+  active: number;
+  onActiveChange: (index: number) => void;
   audioDataRef: React.MutableRefObject<AudioFeatures>;
   shouldTimeAdvance: boolean;
   resetTrigger?: unknown;
@@ -24,13 +26,11 @@ const offsetOf = (index: number, active: number, count: number) => {
   return d;
 };
 
-export const SimCarousel: React.FC<SimCarouselProps> = ({ audioDataRef, shouldTimeAdvance, resetTrigger }) => {
+export const SimCarousel: React.FC<SimCarouselProps> = ({ active, onActiveChange, audioDataRef, shouldTimeAdvance, resetTrigger }) => {
   const count = simulations.length;
-  // Opens on Swarm, wherever it sits in the loop.
-  const [active, setActive] = useState(() => Math.max(0, simulations.findIndex((sim) => sim.title === 'Swarm')));
   const lastWheel = useRef(0);
 
-  const step = useCallback((dir: 1 | -1) => setActive((a) => (a + dir + count) % count), [count]);
+  const step = useCallback((dir: 1 | -1) => onActiveChange((active + dir + count) % count), [active, count, onActiveChange]);
 
   const onWheel = (e: React.WheelEvent) => {
     const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
@@ -89,7 +89,7 @@ export const SimCarousel: React.FC<SimCarouselProps> = ({ audioDataRef, shouldTi
             key={sim.id}
             className="sim-carousel__slot"
             data-center={isCenter}
-            onClick={isCenter ? undefined : () => setActive(i)}
+            onClick={isCenter ? undefined : () => onActiveChange(i)}
             style={{
               transform: `translate(${translate}, -50%) scale(${SCALES[distance]})`,
               opacity: distance === 2 ? 0.45 : distance === 1 ? 0.8 : 1,

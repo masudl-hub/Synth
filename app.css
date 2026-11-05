@@ -630,7 +630,7 @@ dialog.astryx-dialog {
 }
 
 .article__column {
-  max-width: 54rem;
+  max-width: 40rem;
   margin-left: auto;
   margin-right: auto;
   padding: 0 var(--spacing-4);
@@ -639,7 +639,6 @@ dialog.astryx-dialog {
 }
 
 .article__p {
-  max-width: 36rem;
   line-height: 1.7;
 }
 
@@ -650,7 +649,6 @@ dialog.astryx-dialog {
 
 .article__how {
   width: 100%;
-  max-width: 40rem;
 }
 
 .article__diagram {
@@ -668,8 +666,8 @@ dialog.astryx-dialog {
 
 .article__shapes {
   flex: none;
-  width: 14rem;
-  height: 14rem;
+  width: 9rem;
+  height: 9rem;
 }
 
 .article__canvas-text {
@@ -677,9 +675,14 @@ dialog.astryx-dialog {
   min-width: 0;
 }
 
+.article__canvas-text > * {
+  max-width: 100%;
+}
+
 @media (max-width: 40rem) {
   .article__canvas { flex-direction: column; }
   .article__canvas-text { flex: none; width: 100%; }
+  .article__formula { font-size: 0.85em; }
   .article__shapes { width: 100%; max-width: 20rem; height: auto; aspect-ratio: 1; }
 }
 

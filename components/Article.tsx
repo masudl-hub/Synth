@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { Heading } from '@astryxdesign/core/Heading';
@@ -11,6 +11,7 @@ import { FIDELITY_LABEL } from './Tile';
 import { CANVAS_NOTES, Tip } from './articleSections';
 import { simulations } from '../simulations/logic';
 import { useCanvas } from '../hooks/useCanvas';
+import { demoFeatures } from '../audio/demo';
 import { AudioFeatures, SimulationDef } from '../types';
 
 /** A displayed formula whose marked parts show their tip on hover, focus or tap. */
@@ -50,13 +51,38 @@ const P: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Text as="p" display="block" textWrap="pretty" className="article__p">{children}</Text>
 );
 
-/** One canvas on its own: the shapes, without the border or the formula bar. */
+/** One canvas on its own: the shapes, without the border or the formula bar. It follows the pointer like the carousel tiles. */
 const Shapes: React.FC<{ sim: SimulationDef; audioDataRef: React.MutableRefObject<AudioFeatures> }> = ({ sim, audioDataRef }) => {
-  const { canvasRef } = useCanvas(sim.draw, audioDataRef, true);
-  return <canvas ref={canvasRef} data-bare="true" className="article__shapes" aria-label={`${sim.title}, drawn live`} role="img" />;
+  const { canvasRef, handleMouseMove, handleMouseEnter, handleMouseLeave } = useCanvas(sim.draw, audioDataRef, true);
+  return (
+    <canvas
+      ref={canvasRef}
+      data-bare="true"
+      className="article__shapes"
+      aria-label={`${sim.title}, drawn live`}
+      role="img"
+      onMouseMove={handleMouseMove}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    />
+  );
 };
 
-export const Article: React.FC<{ audioDataRef: React.MutableRefObject<AudioFeatures> }> = ({ audioDataRef }) => (
+export const Article: React.FC = () => {
+  // The article plays no sound, so the canvases are fed a held chord; Phase and the others would be blank on silence.
+  const audioDataRef = useRef<AudioFeatures>(demoFeatures(0));
+  useEffect(() => {
+    let frame = 0;
+    const start = performance.now();
+    const tick = () => {
+      demoFeatures((performance.now() - start) / 1000, audioDataRef.current);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return (
   <article className="article" aria-label="About cymatics lab">
     <VStack gap={6} align="start" className="article__column">
       <Heading level={1} type="display-2" textWrap="balance">Making sound visible, honestly</Heading>
@@ -98,4 +124,5 @@ export const Article: React.FC<{ audioDataRef: React.MutableRefObject<AudioFeatu
       })}
     </VStack>
   </article>
-);
+  );
+};

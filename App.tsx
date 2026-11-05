@@ -10,6 +10,7 @@ import { HStack } from '@astryxdesign/core/HStack';
 import { IconArticle, IconDeviceAudioTape, IconMicrophone, IconRefresh } from '@tabler/icons-react';
 import { themes, defaultThemeSlug } from './astryx-themes';
 import { SimCarousel } from './components/SimCarousel';
+import { simulations } from './simulations/logic';
 import { ControlStrip } from './components/ControlStrip';
 import { Composer } from './components/Composer';
 import { Article } from './components/Article';
@@ -27,6 +28,8 @@ const isArticlePath = () => window.location.pathname.replace(/\/+$/, '') === ART
 export default function App() {
   const [audioSource, setAudioSource] = useState<'synth' | 'mic'>('synth');
   const [showArticle, setShowArticle] = useState(isArticlePath);
+  // Opens on Swarm, wherever it sits in the loop; kept here so the carousel keeps its place while the article is open.
+  const [activeSim, setActiveSim] = useState(() => Math.max(0, simulations.findIndex((sim) => sim.title === 'Swarm')));
   const [showLibrary, setShowLibrary] = useState(false);
   const [stream, setStream] = useState<string | null>(null);
   // Bumped when a generated patch lands, so the controls ease in.
@@ -133,7 +136,7 @@ export default function App() {
           <Text type="supporting" size="xsm">Generative Audio Physics</Text>
         </VStack>
 
-        <SimCarousel audioDataRef={activeAudioRef} shouldTimeAdvance={shouldTimeAdvance} resetTrigger={patchVersion} />
+        {!showArticle && <SimCarousel active={activeSim} onActiveChange={setActiveSim} audioDataRef={activeAudioRef} shouldTimeAdvance={shouldTimeAdvance} resetTrigger={patchVersion} />}
 
         <ControlStrip
           arrival={arrival}
@@ -160,7 +163,7 @@ export default function App() {
           </div>
         </div>
 
-        {showArticle && <Article audioDataRef={activeAudioRef} />}
+        {showArticle && <Article />}
 
         <StreamReadout text={audioSource === 'synth' ? stream : null} />
 
