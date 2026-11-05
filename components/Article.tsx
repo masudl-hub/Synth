@@ -5,6 +5,7 @@ import 'katex/dist/katex.min.css';
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { HStack } from '@astryxdesign/core/HStack';
+import { Link } from '@astryxdesign/core/Link';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { demoFeatures } from '../audio/demo.ts';
@@ -224,9 +225,15 @@ const Story: React.FC = () => (
       I&rsquo;m sharing this because I&rsquo;m captivated by how human-AI collaboration can alchemise curiosity.
     </P>
     <P>
-      But I got even more curious. If sound could be visualised through code, could sound itself be code? Probably
-      obvious if you do this sort of thing, but a sound can be described as data. JSON! Of course. An LLM can produce it
-      cleanly, a human can read and edit it, and the browser can play it without guesses.
+      That first version listened to the room around me, and each room left its own signature: my kitchen drew
+      differently from my office nook. That somehow got me wondering what signatures different emotions and stories
+      would leave. But a room only varies so much, so its signatures do too.
+    </P>
+    <P>
+      So I got even more curious. Could the lab make its own sound? Or better yet, could it make data that a browser
+      could &ldquo;perform&rdquo;? Probably obvious if you do this sort of thing, but a sound can be described as data.
+      JSON! Of course. Now you describe a sound, in words or with an image, and Gemini (or a human, if you actually like
+      writing JSON) writes it as a patch. The browser plays it without guesses, and the lab draws what it hears.
     </P>
   </VStack>
 );
@@ -284,6 +291,26 @@ export const Article: React.FC<{ onOpenStudio: () => void }> = ({ onOpenStudio }
             </HStack>
           );
         })}
+
+        <VStack gap={0.5} align="start">
+          <Text type="supporting" size="xsm">
+            Code written with Gemini in Google AI Studio and Claude Code.
+          </Text>
+          <Text type="supporting" size="xsm">
+            Formes inspirées des 36 formes vectorielles technologiques de Vanzyst.
+          </Text>
+          <Text type="supporting" size="xsm">
+            Agent powered by{' '}
+            <Link href="https://theorem.masudlewis.com" target="_blank" className="footer__link">
+              Theorem
+            </Link>
+            . UI built on{' '}
+            <Link href="https://astryx.atmeta.com/" target="_blank" className="footer__link">
+              Astryx
+            </Link>
+            .
+          </Text>
+        </VStack>
 
         <Button
           label="Open the synth studio"
