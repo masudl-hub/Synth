@@ -160,7 +160,7 @@ export default function App() {
           </div>
         </div>
 
-        {showArticle && <Article />}
+        {showArticle && <Article audioDataRef={activeAudioRef} />}
 
         <StreamReadout text={audioSource === 'synth' ? stream : null} />
 

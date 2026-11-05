@@ -14,6 +14,8 @@ const drawEquationOverlay = (
   equation: string,
   vars: Record<string, string | number>
 ) => {
+  // The article draws the shapes alone.
+  if (ctx.canvas.dataset.bare) return;
   const barHeight = 24;
   const padding = 12;
   

@@ -4,11 +4,14 @@ import 'katex/dist/katex.min.css';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { Tooltip } from '@astryxdesign/core/Tooltip';
+import { HStack } from '@astryxdesign/core/HStack';
 import { VStack } from '@astryxdesign/core/VStack';
 import { SignalDiagram } from './SignalDiagram';
 import { FIDELITY_LABEL } from './Tile';
 import { CANVAS_NOTES, Tip } from './articleSections';
 import { simulations } from '../simulations/logic';
+import { useCanvas } from '../hooks/useCanvas';
+import { AudioFeatures, SimulationDef } from '../types';
 
 /** A displayed formula whose marked parts show their tip on hover, focus or tap. */
 const Formula: React.FC<{ latex: string; tips: Record<string, Tip> }> = ({ latex, tips }) => {
@@ -47,7 +50,13 @@ const P: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Text as="p" display="block" textWrap="pretty" className="article__p">{children}</Text>
 );
 
-export const Article: React.FC = () => (
+/** One canvas on its own: the shapes, without the border or the formula bar. */
+const Shapes: React.FC<{ sim: SimulationDef; audioDataRef: React.MutableRefObject<AudioFeatures> }> = ({ sim, audioDataRef }) => {
+  const { canvasRef } = useCanvas(sim.draw, audioDataRef, true);
+  return <canvas ref={canvasRef} data-bare="true" className="article__shapes" aria-label={`${sim.title}, drawn live`} role="img" />;
+};
+
+export const Article: React.FC<{ audioDataRef: React.MutableRefObject<AudioFeatures> }> = ({ audioDataRef }) => (
   <article className="article" aria-label="About cymatics lab">
     <VStack gap={6} align="start" className="article__column">
       <Heading level={1} type="display-2" textWrap="balance">Making sound visible, honestly</Heading>
@@ -65,21 +74,26 @@ export const Article: React.FC = () => (
         <SignalDiagram />
       </VStack>
 
+      <Heading level={2}>The thirteen canvases</Heading>
+
       {CANVAS_NOTES.map((note, i) => {
         const sim = simulations.find((s) => s.title === note.title);
         if (!sim) return null;
         return (
-          <VStack key={note.title} gap={3} align="start" className="article__canvas">
-            <VStack gap={0.5} align="start">
-              <Text type="supporting" size="2xs" className="article__kicker">{String(i + 1).padStart(2, '0')} · {FIDELITY_LABEL[sim.fidelity]}</Text>
-              <Heading level={3}>{sim.title}</Heading>
-              <Text type="supporting" size="xsm">{sim.description}</Text>
+          <HStack key={note.title} gap={5} align="start" className="article__canvas">
+            <Shapes sim={sim} audioDataRef={audioDataRef} />
+            <VStack gap={3} align="start" className="article__canvas-text">
+              <VStack gap={0.5} align="start">
+                <Text type="supporting" size="2xs" className="article__kicker">{String(i + 1).padStart(2, '0')} · {FIDELITY_LABEL[sim.fidelity]}</Text>
+                <Heading level={3}>{sim.title}</Heading>
+                <Text type="supporting" size="xsm">{sim.description}</Text>
+              </VStack>
+              <P>{note.plain}</P>
+              <Formula latex={note.latex} tips={note.tips} />
+              <Text type="supporting" size="sm">Your sound: {note.reacts}</Text>
+              <Text type="supporting" size="2xs">{sim.reference}</Text>
             </VStack>
-            <P>{note.plain}</P>
-            <Formula latex={note.latex} tips={note.tips} />
-            <Text type="supporting" size="sm">Your sound: {note.reacts}</Text>
-            <Text type="supporting" size="2xs">{sim.reference}</Text>
-          </VStack>
+          </HStack>
         );
       })}
     </VStack>
