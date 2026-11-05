@@ -96,6 +96,7 @@ const NowPlaying: React.FC<{
   return (
     <HStack gap={3} align="center" className={arrival ? 'strip__now strip__arrive' : 'strip__now'}>
       <IconButton
+        className="round"
         label={isPlaying ? 'Pause' : 'Play'}
         tooltip={isPlaying ? 'Pause' : 'Play'}
         variant="primary"
@@ -190,6 +191,7 @@ const Mixer: React.FC<
     >
       <HStack gap={4} align="center" className="strip__sliders">
         <IconButton
+          className="round"
           label={`Oscillator wave, currently ${current}`}
           tooltip={`${cap(current)} · click for ${next.type}`}
           variant="ghost"
@@ -219,6 +221,7 @@ const Mixer: React.FC<
       </HStack>
       <HStack gap={1} align="center">
         <IconButton
+          className="round"
           label="Edit patch JSON"
           tooltip="Edit patch JSON"
           variant="ghost"
@@ -226,7 +229,14 @@ const Mixer: React.FC<
           isDisabled={!currentPatch}
           onClick={onEdit}
         />
-        <IconButton label="Library" tooltip="Library" variant="ghost" icon={<IconBooks />} onClick={onOpenLibrary} />
+        <IconButton
+          className="round"
+          label="Library"
+          tooltip="Library"
+          variant="ghost"
+          icon={<IconBooks />}
+          onClick={onOpenLibrary}
+        />
       </HStack>
     </HStack>
   );

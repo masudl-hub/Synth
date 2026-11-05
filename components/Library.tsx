@@ -90,6 +90,7 @@ const LibraryCard: React.FC<{
       {savedIndex === null ? null : (
         <span className="library__delete">
           <IconButton
+            className="round"
             label={`Delete ${patch.name}`}
             tooltip="Delete from your library"
             size="sm"

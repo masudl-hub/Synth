@@ -20,7 +20,6 @@ import { createHttpTransport } from '@theoremjs/react/client';
 import type React from 'react';
 import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { SynthPatch } from '../types.ts';
-import { withPalette } from '../utils/palette.ts';
 
 const ENDPOINT = '/api/theorem';
 const MAX_FILES = 2;
@@ -39,9 +38,8 @@ const THREAD_LOST = /no longer available|conversation is full|conversation_unkno
 const isThreadLost = (failure: { error: string; errorInternal?: string } | null) =>
   !!failure && THREAD_LOST.test(`${failure.error} ${failure.errorInternal ?? ''}`);
 
-/** Sends a message with a random palette hint, so open requests don't all land on the same sound. */
-const sendWithPalette = (chat: Chat, message: Unsent) =>
-  chat.sendText(withPalette(message.text, message.files.length + message.voice.length > 0), {
+const deliver = (chat: Chat, message: Unsent) =>
+  chat.sendText(message.text, {
     files: message.files,
     voice: message.voice,
   });
@@ -155,7 +153,7 @@ const useResend = (chat: Chat, resume: Unsent | null, onNewThread: (unsent?: Uns
       chat.controller.pickOption(loopKey, message.loop);
     }
     lastSent.current = message;
-    sendWithPalette(chat, message);
+    deliver(chat, message);
   });
   const resumed = useRef(false);
   useEffect(() => {
@@ -240,7 +238,7 @@ const ComposerBody: React.FC<
     chat.setDraftText('');
     chat.setPendingFiles([]);
     chat.setPendingVoice([]);
-    sendWithPalette(chat, sent);
+    deliver(chat, sent);
   };
   const textRef = useDraftBox(send);
 
@@ -342,6 +340,7 @@ const Attach: React.FC<{ isDisabled: boolean; setFiles: SetFiles; setIssues: Cha
     <>
       <input ref={fileInput} type="file" multiple={true} accept="image/*" hidden={true} onChange={pick} />
       <IconButton
+        className="round"
         label="Attach image"
         tooltip="Attach an image (up to two)"
         variant="ghost"
@@ -403,6 +402,7 @@ const SendButton: React.FC<{
   if (isStreaming) {
     return (
       <IconButton
+        className="round"
         label="Stop"
         tooltip="Stop writing"
         variant="primary"
@@ -412,10 +412,20 @@ const SendButton: React.FC<{
     );
   }
   if (hasContent) {
-    return <IconButton label="Send" tooltip="Send" variant="primary" icon={<IconArrowUp />} onClick={onSend} />;
+    return (
+      <IconButton
+        className="round"
+        label="Send"
+        tooltip="Send"
+        variant="primary"
+        icon={<IconArrowUp />}
+        onClick={onSend}
+      />
+    );
   }
   return (
     <IconButton
+      className="round"
       label="Ambient sound"
       tooltip="Ambient sound: the visuals react to the sound around you"
       variant="ghost"
@@ -439,6 +449,7 @@ const Thumbnail: React.FC<{ file: File; onRemove: (file: File) => void }> = ({ f
     <span className="composer__thumb">
       {url ? <img src={url} alt={file.name} /> : null}
       <IconButton
+        className="round"
         label={`Remove ${file.name}`}
         tooltip="Remove this image"
         size="sm"

@@ -452,9 +452,7 @@ const drawTopo = ({ ctx, width, height, time, mouse, audio }: SimulationContext)
       const waveAmp = audio.waveform[waveIndex] / 128.0 - 1.0;
       const depthDecay = map(i, [0, lines], [0.2, 2.0]);
 
-      // Removed Perlin noise.
-      // Replaced with Treble-driven harmonic detail
-      // Using sin/cos of the harmonic series to create texture
+      // Treble adds harmonic detail: sines and cosines of the harmonic series give the line its texture.
       const detailFreq = 0.2 + audio.treble * 2.0;
       const detailAmp = audio.treble * 20;
       const detail = Math.sin(x * detailFreq + time * 5) * Math.cos(x * 0.05) * detailAmp;
@@ -666,9 +664,7 @@ const drawParticles = ({ ctx, width, height, time, mouse, audio }: SimulationCon
     let x = cx + Amp * Math.sin(f1 * (time + phase) + Math.PI / 2);
     let y = cy + Amp * Math.sin(f2 * (time + phase));
 
-    // Removed random explosion.
-    // Replaced with Waveform-driven displacement
-    // Use the actual waveform value at this particle's index
+    // Each particle is pushed by the waveform at its index.
     const waveIdx = Math.floor(map(i, [0, count], [0, audio.waveform.length]));
     const waveVal = audio.waveform[waveIdx] / 128.0 - 1.0; // -1 to 1
 
@@ -921,7 +917,6 @@ const diffuseFluid = ({ cols, rows }: FluidGrid, time: number, audio: AudioFeatu
       fluid.velY[i] += (avgY - fluid.velY[i]) * 0.2;
     }
 
-    // Removed Perlin Noise
     // Use Audio Centroid to create turbulence patterns
     const turbScale = 0.05 + audio.centroid * 0.2;
     const turbForce = audio.treble * 5;

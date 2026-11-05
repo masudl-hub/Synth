@@ -75,7 +75,7 @@ flowchart LR
 | --- | --- |
 | UI | React 19, [Astryx](https://www.npmjs.com/package/@astryxdesign/core) components, KaTeX for formulas |
 | Model | A [Theorem](https://www.npmjs.com/package/@theoremjs/agents) profile ([`theorem/profile.ts`](theorem/profile.ts)). A zod schema becomes the JSON schema that Gemini must fill |
-| Server | One Cloudflare Pages Function ([`functions/api/theorem/[[path]].ts`](functions/api/theorem/%5B%5Bpath%5D%5D.ts)). Workers KV limits each browser to 10 patches and each IP address to 35 patches every week |
+| Server | One Cloudflare Pages Function ([`functions/api/theorem/[[path]].ts`](functions/api/theorem/%5B%5Bpath%5D%5D.ts)). Workers KV limits each browser to 10 patches and each IP address to 35 patches every week, except under `npm run dev` |
 | Audio | Web Audio nodes in [`audio/SynthEngine.ts`](audio/SynthEngine.ts). Envelopes are in [`audio/envelope.ts`](audio/envelope.ts) |
 | Visuals | 2D canvas, in [`simulations/logic.ts`](simulations/logic.ts) |
 

@@ -85,7 +85,6 @@ vi.mock('@theoremjs/react', async () => {
   };
 });
 
-const PALETTE = /^make it glassy\n\nPalette hint: /u;
 const LOST = 'This conversation is no longer available.';
 
 const props = (extra: Partial<ComposerProps> = {}): ComposerProps => ({
@@ -149,11 +148,11 @@ describe('Composer', () => {
     expect(onListen).toHaveBeenCalled();
   });
 
-  it('sends the draft with a palette hint, and clears it', () => {
+  it('sends the draft, and clears it', () => {
     render(<Composer {...props()} />);
     type('make it glassy');
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    expect(scenario.sendText).toHaveBeenCalledWith(expect.stringMatching(PALETTE), { files: [], voice: [] });
+    expect(scenario.sendText).toHaveBeenCalledWith('make it glassy', { files: [], voice: [] });
     expect(box().value).toBe('');
     expect(screen.getByRole('button', { name: 'Ambient sound' })).toBeTruthy();
   });
@@ -189,7 +188,7 @@ describe('Composer attachments and options', () => {
     expect(scenario.handleStop).toHaveBeenCalled();
   });
 
-  it('stages at most two images, which can be removed, and sends them without a hint', () => {
+  it('stages at most two images, which can be removed, and sends them', () => {
     const { container } = render(<Composer {...props()} />);
     const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
     fireEvent.click(screen.getByRole('button', { name: 'Attach image' }));
@@ -286,7 +285,7 @@ describe('Composer replies and threads', () => {
     expect(screen.queryByRole('alert')).toBeNull();
     expect(scenario.pickOption).toHaveBeenCalledWith('loop', '32');
     expect(scenario.sendText).toHaveBeenCalledTimes(2);
-    expect(scenario.sendText).toHaveBeenLastCalledWith(expect.stringMatching(PALETTE), { files: [], voice: [] });
+    expect(scenario.sendText).toHaveBeenLastCalledWith('make it glassy', { files: [], voice: [] });
 
     // Drawing again does not send it a third time.
     update(view, {});

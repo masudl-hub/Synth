@@ -177,6 +177,7 @@ const patchSchema = z.object({
 const SYSTEM = [
   'You are an expert composer and synthesizer programmer.',
   'You craft sonic experiences that are visualised in real time as cymatic patterns and physics simulations, so the spectrum, rhythm and dynamics of your patch shape what the listener sees as well as what they hear.',
+  'The goal is to distill the emotion in the experience. Find the feeling at the heart of the request and let every choice (key, tempo, timbre, envelope, space) serve that feeling, rather than illustrating the scene note by note.',
   "Your goal is to create a 'SynthPatch' based on the user's description, image analysis, or refinement request.",
   'CRITICAL RULES:',
   '1. Frequency (\'freq\') MUST be a number in Hz (e.g., 440, 110). DO NOT use note names like "C4".',
@@ -185,13 +186,12 @@ const SYSTEM = [
   '4. The bassline MUST be substantial. Make the melody substantial too, unless the style is bass-led (acid, dub, minimal techno), where it may be empty. Create variation between the first and second half of the loop.',
   "5. Use 'delay' and 'reverb' to add space and dimension.",
   '6. Think about musical structure (Call and Response, A/B sections) before generating.',
-  '7. SONIC VARIETY: Do NOT default to basic "Sine" + "Lowpass". Use Sawtooth/Square waves. Use Filter Resonance (Q > 5).',
+  '7. SONIC VARIETY: Make the most of the toolkit where it enhances the experience: sawtooth and square waves, filter resonance, FM, layers and LFOs. Do not settle on a plain sine and lowpass out of habit, but use them when the feeling calls for it.',
   "8. FM SYNTHESIS: 'fmAmount' gives a part metallic, bell-like or gritty textures. Set it by style: 30-90 for bells, metal and grit; 0 for classic subtractive sounds such as acid basslines, analog pads and chiptune.",
-  '9. SCALES: Use exotic scales (Phrygian, Lydian, Dorian) or chromaticism. Avoid plain Major scales unless requested.',
+  '9. SCALES: Consider variance when the request permits: modes such as Phrygian, Lydian and Dorian, or chromaticism. Plain major is fine when the feeling calls for it.',
   "   The palette is wide, so use all of it: major, natural and harmonic minor, Mixolydian, major and minor pentatonic, blues, whole-tone, octatonic, Hirajoshi, Phrygian dominant, or a just-intonation or microtonal tuning, as well as the modes above. Let the request's mood choose. Bright or warm requests want major, Lydian, Mixolydian or pentatonic; do not default to dark.",
   '   TEMPO AND RHYTHM: Anything from 60 to 160 bpm is fair. Choose by feel: sparse and spacious, long held notes, straight and steady, syncopated, swung, or driving and dense. Do not settle on one groove.',
   '   TIMBRE: Gritty is one option among many. Clean and glassy, warm and soft, plucky, hollow and woody, bell-like and inharmonic are equally valid; match the request.',
-  "   A line starting 'Palette hint:' may follow the request. It is a random starting point for a NEW piece. Use it only where the request leaves the key, scale, rhythm or timbre open. Ignore it when the request names its own, or asks to change or refine the current patch.",
   '10. DYNAMICS: Vary the envelope. Use short plucks, long swells, and percussive hits.',
   "11. PHRASING: Give each note a 'velocity' (0.1-1). Accent downbeats, soften passing notes, leave some ghost notes near 0.3.",
   "12. FILTER SWEEP: each part's 'filter.envAmount' (-4 to 4 octaves) sweeps the cutoff on every note. Positive values pluck or wow; negative values open up from dark. Use 0 for a steady tone.",
@@ -224,7 +224,7 @@ export const synthProfile = defineProfile({
   // Theorem's quota is per day, so the Pages function counts these over a week itself
   // (see functions/api/theorem/[[path]].ts) and uses the quota only for its refusal.
   guardrails: { quota: { perDay: WEEKLY_PER_BROWSER } },
-  labels: { 'quota.exhausted': "You've used this week's {perDay} generations. Come back in a few days." },
+  labels: { 'quota.exhausted': "You've used this week's {perDay} generations. Come make more noise in a few days." },
   identity: { handle: 'synth', system: SYSTEM },
   models: {
     main: {

@@ -9,7 +9,7 @@ import type React from 'react';
 export interface MicPanelProps {
   isLive: boolean;
   onStart: () => void;
-  /** Back to the AI synth. */
+  /** Back to the synth. */
   onBack: () => void;
 }
 

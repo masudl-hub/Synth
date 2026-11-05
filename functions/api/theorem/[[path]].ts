@@ -13,6 +13,8 @@ export interface Env {
   GEMINI_API_KEY: string;
   GEMINI_API_KEY_B?: string;
   QUOTA?: KVNamespace;
+  /** Set by `npm run dev` only, so local work isn't held to the weekly limit. */
+  NO_QUOTA?: string;
 }
 
 type Handler = (request: Request) => Promise<Response>;
@@ -65,7 +67,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env }) => {
     conversationStore: createMemoryConversationStore(),
   });
 
-  const kv = env.QUOTA;
+  const kv = env.NO_QUOTA ? undefined : env.QUOTA;
   if (!(kv && isGeneration(request))) {
     return handler(request);
   }

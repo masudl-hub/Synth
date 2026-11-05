@@ -553,7 +553,7 @@ export class SynthEngine {
 
     const now = this.ctx.currentTime;
 
-    // Reset Master Filter slightly but keep it somewhat open or use patch default if we mapped it
+    // Open the master filter fully for the new patch.
     this.masterFilter.frequency.setTargetAtTime(20_000, now, 0.5);
 
     // Apply Delay Params
@@ -718,7 +718,7 @@ export class SynthEngine {
   /** Builds and starts one note's graph: oscillators into the filter, then the envelope, LFO, bend and pan. */
   private buildVoice(s: NoteSpec, peak: number): Voice {
     const { attack, decay, sustain, release } = s.inst.envelope;
-    // Tweak attack for snappier transients if requested by AI
+    // A 5 ms floor on the attack, so notes don't click.
     const shape: EnvelopeShape = { attack: Math.max(0.005, attack), decay, sustain, release };
     const g = new NoteGraph(this.ctx, (o, name) => this.setWave(o, name));
     const wave = s.inst.oscillator.type;

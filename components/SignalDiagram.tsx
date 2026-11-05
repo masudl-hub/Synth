@@ -12,7 +12,7 @@ const FILL = 'var(--color-background-card-raised)';
 const TIPS: Record<string, { name: string; text: string }> = {
   you: {
     name: 'You',
-    text: 'Type a description, attach up to two images, or record a voice note. The patch now playing rides along, and a random palette hint (a key, a scale, a tempo, a timbre) is added to a new piece, so each one starts somewhere different. A refinement edits what is playing instead.',
+    text: 'Type a description, attach up to two images, or record a voice note. The patch now playing rides along, so a refinement edits what is playing instead of starting over.',
   },
   model: {
     name: 'Gemini, through Theorem',

@@ -2,6 +2,7 @@ import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { HStack } from '@astryxdesign/core/HStack';
 import { IconButton } from '@astryxdesign/core/IconButton';
 import { Link } from '@astryxdesign/core/Link';
+import { ScrollableArea } from '@astryxdesign/core/ScrollableArea';
 import { Text } from '@astryxdesign/core/Text';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
 import { Theme } from '@astryxdesign/core/theme';
@@ -111,6 +112,7 @@ const Corner: React.FC<{
 }> = ({ thread, showArticle, onStartOver, goTo }) => (
   <HStack gap={1} align="center" className="app__toggle">
     <IconButton
+      className="round"
       label="Start over"
       tooltip="Start over: new thread, and the patch is cleared unless you saved it"
       variant="ghost"
@@ -133,6 +135,7 @@ const Corner: React.FC<{
         />
       }
       isIconOnly={true}
+      className="round"
       isPressed={showArticle}
       onPressedChange={goTo}
     />
@@ -157,9 +160,11 @@ const LibraryDialog: React.FC<
   return (
     <Dialog isOpen={isOpen} onOpenChange={onOpenChange} width="min(48rem, 94vw)">
       <DialogHeader title="Library" onOpenChange={onOpenChange} />
-      <VStack padding={4}>
+      {/* The dialog caps its height, so the grid scrolls inside it. Scrolling turns on only once the grid
+          overflows, and a flex item grows to fit its content unless it is allowed to shrink. */}
+      <ScrollableArea label="Patch library" padding={4} minHeight={0}>
         <Library {...library} onLoad={onLoad} />
-      </VStack>
+      </ScrollableArea>
     </Dialog>
   );
 };

@@ -89,6 +89,21 @@ describe('the Theorem Pages Function', () => {
     expect(data.size).toBe(0);
   });
 
+  it('neither counts nor refuses a turn when the quota is off for local work', async () => {
+    const respond = vi.fn(() => Promise.resolve(new Response('ok')));
+    theorem.respond = respond;
+    const { kv, data } = fakeKv();
+    data.set('week:ip:203.0.113.7', full(WEEKLY_PER_IP));
+    const request = new Request(TURN, { method: 'POST', headers: { 'cf-connecting-ip': '203.0.113.7' } });
+    const response = await onRequest({
+      request,
+      env: { GEMINI_API_KEY: 'a', QUOTA: kv, NO_QUOTA: '1' },
+    } as unknown as Context);
+    expect(response.status).toBe(200);
+    expect(respond).toHaveBeenCalledOnce();
+    expect(used(data, 'week:ip:203.0.113.7')).toBe(WEEKLY_PER_IP);
+  });
+
   it('counts an accepted turn against the address and the browser, for a week', async () => {
     const { kv, data, ttls } = fakeKv();
     const response = await call(kv, { cookie: `theme=dark; synth_visitor=${VISITOR}` });

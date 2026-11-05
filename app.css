@@ -9,6 +9,12 @@
   --color-background-card-raised: #212121;
 }
 
+/* Icon-only buttons are circles, so their hover fill matches the round composer and controls around them. */
+.astryx-button.round,
+.astryx-toggle-button.round {
+  border-radius: var(--radius-full);
+}
+
 html,
 body,
 #root {
@@ -412,11 +418,12 @@ dialog.astryx-dialog {
   outline: none;
 }
 
-/* Composer: a pill at rest, a rounded panel when it grows */
+/* Composer: a pill at rest, a rounded panel when it grows. The same inset on every side keeps the end buttons
+   concentric with its rounded ends. */
 .composer {
   --tray-h: 0px;
   box-sizing: border-box;
-  padding: var(--spacing-1) var(--spacing-2);
+  padding: var(--spacing-1);
   border-radius: calc(var(--dock-h) / 2);
   background: var(--color-background-card-raised, #1c1c1e);
 }

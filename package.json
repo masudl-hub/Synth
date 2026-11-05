@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite build --logLevel warn && (vite build --watch --logLevel warn --emptyOutDir false & wrangler pages dev dist)",
+    "dev": "vite build --logLevel warn && (vite build --watch --logLevel warn --emptyOutDir false & wrangler pages dev dist --binding NO_QUOTA=1)",
     "build": "vite build",
     "deploy": "npm run build && wrangler pages deploy dist --project-name audio-physics --branch main",
     "test": "vitest run",
