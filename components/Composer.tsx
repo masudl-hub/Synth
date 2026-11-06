@@ -174,6 +174,29 @@ const useResend = (chat: Chat, resume: Unsent | null, onNewThread: (unsent?: Uns
 };
 
 /** Grows the textarea with its text; CSS caps the height to the gap above the dock, then it scrolls. Enter sends. */
+/**
+ * The box's own copy of the draft. The chat tells its listeners about a change a microtask after it is made, so a box
+ * that read the chat's draft would render the old text in between, and putting the new text back moves the caret to
+ * the end. This copy changes in the same render as the keystroke, and follows the chat when it changes the draft itself.
+ */
+const useDraft = (chat: Chat) => {
+  const [draft, setDraft] = useState(chat.draftText);
+  const [seen, setSeen] = useState(chat.draftText);
+  if (chat.draftText !== seen) {
+    setSeen(chat.draftText);
+    setDraft(chat.draftText);
+  }
+  const { setDraftText } = chat;
+  const change = useCallback(
+    (text: string) => {
+      setDraft(text);
+      setDraftText(text);
+    },
+    [setDraftText],
+  );
+  return [draft, change] as const;
+};
+
 const useDraftBox = (send: () => void) => {
   const textRef = useRef<HTMLTextAreaElement>(null);
   // Measured after every render, but only when the text on screen has changed since the last measure.
@@ -220,10 +243,11 @@ const ComposerBody: React.FC<
   usePatchReplies(chat, onPatch, onStream);
   const lastSent = useResend(chat, resume, onNewThread);
 
+  const [draft, changeDraft] = useDraft(chat);
   const isStreaming = chat.phase === 'streaming';
   const loop = loopOf(chat);
   const loopValue = loop ? chat.optionChoices?.values[loop[0]] : undefined;
-  const hasContent = chat.draftText.trim().length > 0 || chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0;
+  const hasContent = draft.trim().length > 0 || chat.pendingFiles.length > 0 || chat.pendingVoice.length > 0;
   const problems = [
     ...chat.issues.map((i) => attachmentIssueText(i, chat.iface?.labels)),
     ...(chat.failure && !isThreadLost(chat.failure) ? [chat.failure.error] : []),
@@ -233,9 +257,9 @@ const ComposerBody: React.FC<
     if (!hasContent || isStreaming) {
       return;
     }
-    const sent = { text: chat.draftText, files: chat.pendingFiles, voice: chat.pendingVoice, loop: loopValue };
+    const sent = { text: draft, files: chat.pendingFiles, voice: chat.pendingVoice, loop: loopValue };
     lastSent.current = sent;
-    chat.setDraftText('');
+    changeDraft('');
     chat.setPendingFiles([]);
     chat.setPendingVoice([]);
     deliver(chat, sent);
@@ -267,8 +291,8 @@ const ComposerBody: React.FC<
             isLabelHidden={true}
             width="100%"
             placeholder={currentPatch ? 'Describe a sound, or refine this patch' : 'Describe a sound'}
-            value={chat.draftText}
-            onChange={chat.setDraftText}
+            value={draft}
+            onChange={changeDraft}
             enterKeyHint="send"
             containerStyle={{ flex: 1, minWidth: 0 }}
             controlClassName="composer__input"

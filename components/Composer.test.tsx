@@ -33,6 +33,8 @@ const scenario = vi.hoisted(() => ({
   values: {} as Record<string, string>,
   context: undefined as unknown,
   mounts: 0,
+  /** Like the real chat, tell the composer about a new draft a microtask later. */
+  isDraftLate: false,
   chat: null as FakeChat | null,
   sendText: vi.fn(),
   handleStop: vi.fn(),
@@ -53,7 +55,9 @@ vi.mock('@theoremjs/react', async () => {
         scenario.failure = null;
         return null;
       });
-      const [draftText, setDraftText] = useState('');
+      const [draftText, setDraftNow] = useState('');
+      const setDraftText = (text: string) =>
+        scenario.isDraftLate ? queueMicrotask(() => setDraftNow(text)) : setDraftNow(text);
       const [pendingFiles, setPendingFiles] = useState([] as File[]);
       const [pendingVoice, setPendingVoice] = useState([] as File[]);
       const [issues, setIssues] = useState([] as { code: string }[]);
@@ -115,6 +119,7 @@ beforeEach(() => {
     declared: undefined,
     values: {},
     mounts: 0,
+    isDraftLate: false,
     chat: null,
   });
   vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:thumb', revokeObjectURL: vi.fn() }));
@@ -138,6 +143,20 @@ describe('Composer', () => {
     expect(view.container.innerHTML).toBe('');
     update(view, { described: { status: 'ready', iface: { type: 'live' } } });
     expect(view.container.innerHTML).toBe('');
+  });
+
+  it('keeps an edit in place while the chat catches up, so the caret does not jump to the end', async () => {
+    scenario.isDraftLate = true;
+    render(<Composer {...props()} />);
+    type('make it glassy');
+    expect(box().value).toBe('make it glassy');
+    await act(() => Promise.resolve());
+    expect(box().value).toBe('make it glassy');
+    type('make it very glassy');
+    expect(box().value).toBe('make it very glassy');
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(scenario.sendText).toHaveBeenCalledWith('make it very glassy', { files: [], voice: [] });
+    expect(box().value).toBe('');
   });
 
   it('offers ambient sound while there is nothing to send', () => {
